@@ -1,0 +1,329 @@
+#!/usr/bin/env python3
+"""codespot — local multi-engine static scan for AI-generated code.
+
+Subcommands: setup | scope | scan | report | selftest
+"""
+
+import argparse
+import concurrent.futures
+import datetime
+import json
+import os
+import shutil
+import subprocess
+import sys
+import tempfile
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, HERE)
+sys.path.insert(0, os.path.join(HERE, "engines"))
+
+import setup_engine  # noqa: E402
+
+CODESPOT_DIR = ".codespot"
+REPORT_JSON = "report.json"
+REPORT_MD = "report.md"
+ENGINE_TIMEOUT = 300
+SEV_ORDER = {"critical": 0, "major": 1, "minor": 2, "info": 3}
+
+
+def repo_root(args):
+    return os.path.abspath(args.workdir)
+
+
+def ensure_scope_list(root, scope, out_path):
+    import scope as scope_mod
+    files, effective = scope_mod.compute(root, scope)
+    entries = [{"path": p, "language": scope_mod.detect_language(p)} for p in sorted(set(files))]
+    with open(out_path, "w", encoding="utf-8") as f:
+        json.dump({"scope": effective, "files": entries}, f, ensure_ascii=False)
+    return effective, entries
+
+
+def select_engines(entries):
+    """Pick adapters per registry: language engines if they match a target file, always_on always."""
+    registry = setup_engine.load_registry()
+    langs = {e.get("language") for e in entries if e.get("language")}
+    chosen = []
+    for key, spec in registry.items():
+        if spec.get("always_on") or (spec.get("languages") != ["*"] and langs.intersection(spec.get("languages", []))):
+            chosen.append((key, spec))
+    return chosen
+
+
+def run_adapter(key, spec, root, list_path, out_path):
+    exe = setup_engine.engine_binary(key, spec["version"])
+    if not exe:
+        return key, None, "engine not installed (run: codespot setup)"
+    script = os.path.join(HERE, "engines", spec["adapter"])
+    env = dict(os.environ, CODESPOT_WORKDIR=root)
+    try:
+        r = subprocess.run(
+            [sys.executable, script, "--workdir", root, "--files", list_path, "--out", out_path],
+            capture_output=True, text=True, timeout=ENGINE_TIMEOUT, env=env)
+    except subprocess.TimeoutExpired:
+        return key, None, "timed out after %ss" % ENGINE_TIMEOUT
+    if r.returncode != 0:
+        return key, None, (r.stderr.strip() or "exit code %s" % r.returncode)[:400]
+    try:
+        with open(out_path, "r", encoding="utf-8") as f:
+            return key, json.load(f), None
+    except (OSError, ValueError) as e:
+        return key, None, "unreadable result: %s" % e
+
+
+def merge_issues(per_engine):
+    """Flatten, drop project ignores, severity already normalized by adapters."""
+    from common import read_project_ignores  # scripts/engines on path
+    all_issues = []
+    for key, issues in per_engine:
+        ignores = read_project_ignores(key)
+        for issue in issues:
+            if any(issue.get("file") == ig.get("file") and issue.get("rule") == ig.get("rule")
+                   for ig in ignores):
+                continue
+            all_issues.append(issue)
+    all_issues.sort(key=lambda i: (SEV_ORDER.get(i.get("severity"), 9), i.get("file", ""), i.get("line", 0)))
+    return all_issues
+
+
+def render_md(payload):
+    lines = []
+    s = payload["summary"]
+    if s["total"] == 0:
+        lines.append("**✅ 通过**：未发现任何问题（scope=%s，共 %d 个文件）。"
+                     % (payload["scope"], len(payload["scope_files"])))
+        return "\n".join(lines)
+    lines.append("# codespot 扫描报告")
+    lines.append("")
+    lines.append("- 时间：%s" % payload["generatedAt"])
+    lines.append("- 范围：%s（%d 个文件）" % (payload["scope"], len(payload["scope_files"])))
+    lines.append("- 发现：%d critical / %d major / %d minor / %d info"
+                 % (s["critical"], s["major"], s["minor"], s["info"]))
+    for sev, title in (("critical", "🔴 严重"), ("major", "🟠 重要"),
+                       ("minor", "🟡 次要"), ("info", "ℹ️ 提示")):
+        group = [i for i in payload["issues"] if i["severity"] == sev]
+        if not group:
+            continue
+        lines.append("")
+        lines.append("## %s（%d）" % (title, len(group)))
+        for i in group:
+            lines.append("")
+            lines.append("- [%s](%s) `%s:%d` — %s" % (i["rule"], i.get("ruleUrl", ""), i["file"], i["line"], i["message"]))
+            if i.get("snippet"):
+                lines.append("  - ```%s```" % i["snippet"].replace("\n", " ")[:160])
+    if payload["engine_errors"]:
+        lines.append("")
+        lines.append("## ⚠️ 引擎错误")
+        for e in payload["engine_errors"]:
+            lines.append("- %s: %s" % (e["engine"], e["reason"]))
+    return "\n".join(lines)
+
+
+def do_scan(args):
+    root = repo_root(args)
+    if not os.path.isdir(os.path.join(root, ".git")):
+        sys.stderr.write("codespot: %s is not a git repository\n" % root)
+        return 2
+    dot = os.path.join(root, CODESPOT_DIR)
+    os.makedirs(dot, exist_ok=True)
+    list_path = os.path.join(dot, "scope-files.json")
+
+    effective, entries = ensure_scope_list(root, args.scope, list_path)
+    print("scan: scope=%s, %d file(s)" % (effective, len(entries)))
+    if not entries:
+        payload = {"generatedAt": _now(), "scope": effective, "scope_files": [],
+                   "issues": [], "engine_errors": [],
+                   "summary": {"critical": 0, "major": 0, "minor": 0, "info": 0, "total": 0}}
+        _write_reports(root, payload)
+        print("scan: nothing to scan, report written")
+        return 0
+
+    chosen = select_engines(entries)
+    if not chosen:
+        sys.stderr.write("codespot: no engine matches the target files\n")
+        return 2
+    for key, spec in chosen:
+        if not setup_engine.engine_binary(key, spec["version"]):
+            print("scan: %s not installed, running setup first..." % key)
+            try:
+                setup_engine.setup_engine(spec)
+            except RuntimeError as e:
+                print("scan: setup failed for %s: %s" % (key, e))
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=min(4, len(chosen))) as pool:
+        futures = [pool.submit(run_adapter, key, spec, root, list_path,
+                               os.path.join(dot, "result-%s.json" % key))
+                   for key, spec in chosen]
+        results = [f.result() for f in futures]
+
+    per_engine, engine_errors = [], []
+    for key, issues, err in results:
+        if err:
+            engine_errors.append({"engine": key, "reason": err})
+            print("scan: engine %s failed: %s" % (key, err), file=sys.stderr)
+        elif issues is not None:
+            per_engine.append((key, issues))
+
+    issues = merge_issues(per_engine)
+    summary = {k: sum(1 for i in issues if i["severity"] == k)
+               for k in SEV_ORDER}
+    summary["total"] = len(issues)
+    payload = {"generatedAt": _now(), "scope": effective,
+               "scope_files": [e["path"] for e in entries],
+               "issues": issues, "engine_errors": engine_errors, "summary": summary}
+    _write_reports(root, payload)
+    ok_engines = [k for k, _, e in results if not e]
+    print("scan: done — %d issue(s) from %d engine(s)%s"
+          % (len(issues), len(ok_engines),
+             ", %d engine error(s)" % len(engine_errors) if engine_errors else ""))
+    return 0
+
+
+def _now():
+    return datetime.datetime.now().astimezone().isoformat(timespec="seconds")
+
+
+def _write_reports(root, payload):
+    dot = os.path.join(root, CODESPOT_DIR)
+    with open(os.path.join(dot, REPORT_JSON), "w", encoding="utf-8") as f:
+        json.dump(payload, f, ensure_ascii=False, indent=1)
+    with open(os.path.join(dot, REPORT_MD), "w", encoding="utf-8") as f:
+        f.write(render_md(payload) + "\n")
+
+
+def do_setup(args):
+    try:
+        setup_engine.setup_all(only=args.engines or None)
+    except RuntimeError as e:
+        sys.stderr.write("codespot setup: %s\n" % e)
+        return 2
+    return 0
+
+
+def do_scope(args):
+    import scope as scope_mod
+    root = repo_root(args)
+    try:
+        files, effective = scope_mod.compute(root, args.scope)
+    except RuntimeError as e:
+        sys.stderr.write("codespot scope: %s\n" % e)
+        return 2
+    entries = [{"path": p, "language": scope_mod.detect_language(p)} for p in sorted(set(files))]
+    print(json.dumps({"scope": effective, "files": entries}, ensure_ascii=False, indent=1))
+    return 0
+
+
+def do_report(args):
+    root = repo_root(args)
+    path = os.path.join(root, CODESPOT_DIR, REPORT_JSON)
+    if not os.path.isfile(path):
+        sys.stderr.write("codespot report: no report found (run codespot scan first)\n")
+        return 2
+    with open(path, "r", encoding="utf-8") as f:
+        print(f.read())
+    return 0
+
+
+def do_selftest(args):
+    fixtures = os.path.join(os.path.dirname(HERE), "tests", "fixtures")
+    if not os.path.isdir(fixtures):
+        sys.stderr.write("codespot selftest: fixtures not found at %s\n" % fixtures)
+        return 2
+    expected_path = os.path.join(fixtures, "expected.json")
+    with open(expected_path, "r", encoding="utf-8") as f:
+        expected = json.load(f)
+
+    tmp = tempfile.mkdtemp(prefix="codespot-selftest-")
+    list_path = os.path.join(tmp, "files.json")
+    files = [{"path": os.path.join(fixtures, rel), "language": None} for rel in expected["files"]]
+    with open(list_path, "w") as f:
+        json.dump({"scope": "selftest", "files": files}, f)
+
+    registry = setup_engine.load_registry()
+    failures = 0
+    os.environ["CODESPOT_WORKDIR"] = HERE  # load repo-level severity mapping
+    with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
+        futures = {}
+        for key, spec in registry.items():
+            if not setup_engine.engine_binary(key, spec["version"]):
+                print("selftest: SKIP %s (not installed)" % key)
+                continue
+            out = os.path.join(tmp, "result-%s.json" % key)
+            futures[pool.submit(run_adapter, key, spec, fixtures, list_path, out)] = key
+        for fut, key in futures.items():
+            _, issues, err = fut.result()
+            if err:
+                print("selftest: FAIL %s — %s" % (key, err))
+                failures += 1
+                continue
+            problems = _check_expectations(key, issues, expected, fixtures)
+            if problems:
+                failures += 1
+                for p in problems:
+                    print("selftest: FAIL %s — %s" % (key, p))
+            else:
+                print("selftest: PASS %s (%d issues)" % (key, len(issues)))
+    shutil.rmtree(tmp, ignore_errors=True)
+    if failures:
+        print("selftest: %d failure(s)" % failures)
+        return 2
+    print("selftest: all engines passed")
+    return 0
+
+
+def _check_expectations(key, issues, expected, fixtures):
+    from common import REQUIRED_FIELDS
+    problems = []
+    exp = expected.get("expectations", {}).get(key, {})
+    for i in issues:
+        missing = [k for k in REQUIRED_FIELDS if k not in i]
+        if missing:
+            problems.append("issue missing fields %s" % missing)
+            break
+        if i["severity"] not in SEV_ORDER:
+            problems.append("bad severity %s" % i["severity"])
+            break
+        if i["file"].startswith("/"):
+            i["file"] = os.path.relpath(i["file"], fixtures).replace(os.sep, "/")
+    want_rules = set(exp.get("rules", []))
+    got_rules = {i["rule"] for i in issues}
+    missing_rules = want_rules - got_rules
+    if missing_rules:
+        problems.append("expected rules not reported: %s (got %s)" % (sorted(missing_rules), sorted(got_rules)))
+    for bad in exp.get("forbidden_snippets", []):
+        if any(bad in json.dumps(i) for i in issues):
+            problems.append("forbidden raw snippet leaked: %s" % bad)
+    return problems
+
+
+def main():
+    p = argparse.ArgumentParser(prog="codespot", description="local multi-engine static scan")
+    p.add_argument("--workdir", default=".", help="target repository root (default: cwd)")
+    sub = p.add_subparsers(dest="cmd", required=True)
+
+    sp = sub.add_parser("setup", help="install scan engines (idempotent)")
+    sp.add_argument("engines", nargs="*", help="specific engines (default: all)")
+    sp.set_defaults(fn=do_setup)
+
+    sp = sub.add_parser("scope", help="compute scan file list")
+    sp.add_argument("--scope", default="auto",
+                    help="uncommitted | unpushed | ref:<ref> | all | auto (default)")
+    sp.set_defaults(fn=do_scope)
+
+    sp = sub.add_parser("scan", help="run all matching engines and write reports")
+    sp.add_argument("--scope", default="auto")
+    sp.set_defaults(fn=do_scan)
+
+    sp = sub.add_parser("report", help="print last report.json")
+    sp.set_defaults(fn=do_report)
+
+    sp = sub.add_parser("selftest", help="run fixture-based regression across engines")
+    sp.set_defaults(fn=do_selftest)
+
+    args = p.parse_args()
+    sys.exit(args.fn(args))
+
+
+if __name__ == "__main__":
+    main()

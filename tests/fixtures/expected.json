@@ -1,0 +1,13 @@
+{
+  "files": ["sample_bad.py", "sample_secrets.py"],
+  "expectations": {
+    "ruff": {
+      "rules": ["S105", "S307", "PLC0415", "S310"],
+      "forbidden_snippets": ["hunter2"]
+    },
+    "gitleaks": {
+      "rules": ["aws-access-token"],
+      "forbidden_snippets": ["AKIAABCDEFGHIJKLMNOP"]
+    }
+  }
+}

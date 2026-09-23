@@ -1,0 +1,23 @@
+{
+  "gitleaks": {
+    "default": "critical",
+    "rules": {}
+  },
+  "ruff": {
+    "default": "major",
+    "rules": {
+      "S101": "critical",
+      "S102": "critical",
+      "S103": "critical",
+      "S104": "critical",
+      "S105": "critical",
+      "S106": "critical",
+      "S107": "critical",
+      "S108": "critical",
+      "S110": "critical",
+      "S112": "critical",
+      "S506": "critical",
+      "S608": "critical"
+    }
+  }
+}

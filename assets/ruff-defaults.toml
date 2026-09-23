@@ -1,0 +1,23 @@
+# codespot default ruff ruleset: quality + security (S family), no pure style.
+# Formatting is out of scope — that belongs to `ruff format`.
+line-length = 100
+
+[lint]
+select = [
+  "E",   # pycodestyle errors (real errors, not layout)
+  "W6",  # deprecated/invalid escapes etc.
+  "F",   # pyflakes: undefined names, unused imports/vars, f-string bugs
+  "PL",  # pylint-inspired: PLA/PLC/PLE/PLR/PLW quality subset
+  "S",   # flake8-bandit: security (S101 assert, S102 exec, hardcoded passwords...)
+  "B",   # flake8-bugbear: likely bugs
+  "RUF", # ruff-specific correctness
+]
+ignore = [
+  "E501",  # line too long — formatting concern
+  "PLR0913", "PLR0912", "PLR0915", "PLR2004", # complexity/style thresholds
+  "PLR0402", "PLR1711", # style
+  "S104",  # binding to all interfaces — often intentional locally
+]
+
+[lint.per-file-ignores]
+"tests/**" = ["S101"]  # asserts are fine in tests
