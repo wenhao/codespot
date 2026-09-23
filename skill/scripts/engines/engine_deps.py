@@ -1,8 +1,10 @@
 """OSV-Scanner adapter — dependency/supply-chain vulnerability scanning.
 
 Finds dependency manifests & lockfiles in the scope, runs
-`osv-scanner scan source -L <file> -f json` (queries osv.dev; network needed),
-maps results to the unified issue schema.
+`osv-scanner scan source -L <file> -f json`, maps results to the unified
+issue schema. Offline-first: when a local OSV vulnerability DB has been
+downloaded (codespot update-db), scans run with --offline-vulnerabilities;
+otherwise the live osv.dev API is queried.
 Exit codes: 0 = clean, 1 = vulnerabilities found, >=2 = error.
 category: dependencies (config.json rules.dependencies.disabled/ignore apply).
 """
@@ -40,6 +42,13 @@ def find_binary():
     return hits[-1] if hits else shutil.which("osv-scanner")
 
 
+def offline_db_available():
+    """True when a previously downloaded OSV local DB exists (osv-scalibr cache)."""
+    bases = (os.path.expanduser("~/Library/Caches/osv-scalibr"),
+             os.path.expanduser(os.path.join(os.environ.get("XDG_CACHE_HOME", "~/.cache"), "osv-scalibr")))
+    return any(glob.glob(os.path.join(b, "*", "*.zip")) for b in bases)
+
+
 def is_manifest(path):
     name = os.path.basename(path)
     if MANIFEST_RE.match(name):
@@ -69,6 +78,8 @@ def main():
         return
 
     cmd = [binary, "scan", "source", "--allow-no-lockfiles", "-f", "json"]
+    if offline_db_available():
+        cmd += ["--offline-vulnerabilities"]
     for m in manifests:
         cmd += ["-L", m]
     try:

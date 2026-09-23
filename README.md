@@ -10,21 +10,27 @@ AI agent skill for local static code scanning: detect changed files via git (unc
 
 ## Quick start
 
+**Install as a skill** (everything the user needs lives in `skill/`; docs & openspec stay out of the way):
+
+```bash
+ln -s <repo>/skill ~/.agents/skills/codespot
+```
+
 ```bash
 # 1. Install engines (idempotent; installs only what your project needs)
-scripts/codespot setup
+~/.agents/skills/codespot/scripts/codespot setup
 
 # 2. Scan (in any git repo; scope auto = uncommitted → unpushed → all)
-scripts/codespot scan --scope auto
+~/.agents/skills/codespot/scripts/codespot scan --scope auto
 
 # 3. Read the reports
 cat .codespot/report.md     # human-readable, codespot-branded (CS-xxxxx ids)
 cat .codespot/report.json   # agent-facing: internals (tool/rule/ruleUrl) + csId
-scripts/codespot show --severity critical,major   # browse issue details
-scripts/codespot show --rule CS-5ebd4             # locate one rule's findings
+~/.agents/skills/codespot/scripts/codespot show --severity critical,major
+~/.agents/skills/codespot/scripts/codespot show --rule CS-5ebd4
 
 # Regression check (fixture-based, all engines)
-scripts/codespot selftest
+~/.agents/skills/codespot/scripts/codespot selftest
 ```
 
 Engines are downloaded into `~/.codespot/engines/` (version-locked); reports land in the target repo's `.codespot/` — add `.codespot/` to your project's `.gitignore`.
@@ -58,6 +64,26 @@ Engines are downloaded into `~/.codespot/engines/` (version-locked); reports lan
 | `sql` | SQLFluff | python3 (venv-isolated) | dialect auto-detection chain |
 | `semantic` | Semgrep CE 1.177 (fallback 1.136 on py3.9) | python3 (venv) | Go/C#/Kotlin/Ruby/PHP/Rust/Terraform…; rules fetched from official registry |
 | `dependencies` | OSV-Scanner 2.6 | — (queries osv.dev) | scans requirements/lockfiles/pom/go.mod for known CVEs |
+
+### Rules per language — counts & de-duplication
+
+Rule counts below are what codespot actually enables (verified against the installed engines, 2026-09-23), not the tools' full catalogs.
+
+| Language | Quality / style | Security | Dependency & supply chain |
+|---|---|---|---|
+| Python | ruff: **503 enabled** (of 970 defined; E/W/F/PL/B/RUF families, style noise excluded) | ruff S-family + bandit (32 plugins, B1xx–B7xx) | OSV-Scanner (osv.dev advisories) |
+| JavaScript / TypeScript | oxlint: **335 enabled** (correctness 272 + suspicious 63, of 870 defined) | eslint-plugin-sonarjs: **~215 Sonar rules** (bug/security/smell) | OSV-Scanner (package-lock/yarn.lock) |
+| Java | PMD: **213 enabled** (226 category rules − 13 excluded; errorprone/bestpractices/security/design/multithreading) | SpotBugs **~470 bug patterns** + FindSecBugs **144 security detectors** (CWE-tagged, bytecode-level, needs buildable project) | OSV-Scanner (pom.xml) |
+| SQL | SQLFluff: **~48 enabled** (of 68; layout/capitalisation groups dropped) | — | — |
+| Go / C# / Kotlin / Ruby / PHP / Rust / Swift / Scala | oxlint/ESLint where applicable | Semgrep `auto` packs (**2800+** registry rules) | OSV-Scanner (go.mod/Cargo/composer/Gemfile/*.csproj) |
+| Secrets (any language) | — | gitleaks: **222 rules** (vendor keys, private keys, entropy heuristics) | — |
+
+**De-duplication between tools** (by design, verified in the express/jsoup validation scans):
+
+- **JS/TS**: `eslint-plugin-oxlint` turns off every ESLint-core/typescript-eslint rule the fast oxlint layer already owns — one finding per issue. sonarjs contributes only its *unique* Sonar rules (its `no-unused-vars` duplicate is explicitly disabled).
+- **Python**: ruff's flake8-bandit (`S`) family and bandit's `B` family intentionally overlap on security topics; both run because their rule semantics differ. Findings keep distinct rule ids, so nothing is silently lost.
+- **Java**: PMD (source-level, no compile) and SpotBugs/FindSecBugs (bytecode-level, compile required) are complementary layers; the small overlap (e.g. resource-handling) is kept deliberately.
+- Cross-engine duplicate *findings* on the same line are not merged — different tools' verdicts are preserved and attributed.
 
 ## Rule trimming, tuning & parameters
 
@@ -125,7 +151,10 @@ Secrets false positives use gitleaks' own fingerprint file: echo the `Fingerprin
 
 ## Vulnerability database & engine updates
 
-- **Dependency vulnerabilities (OSV-Scanner)**: queries the live [osv.dev](https://osv.dev) database on every scan — data is always current, nothing to update locally. Needs network; offline runs will record this engine as unavailable (other engines unaffected).
+- **Dependency vulnerabilities (OSV-Scanner)** — offline-first:
+  - No local DB yet → queries the live [osv.dev](https://osv.dev) API on every scan (always current, needs network).
+  - Run `codespot update-db` once to download the local vulnerability DB (cached under `~/Library/Caches/osv-scalibr/` or `~/.cache/osv-scalibr/`).
+  - With a local DB present, dependency scans run fully offline (`--offline-vulnerabilities`); re-run `codespot update-db` to refresh it. The adapter picks automatically: offline DB present → offline; absent → online.
 - **Semgrep rules**: fetched from the official registry and cached under `~/.semgrep/`. Re-scanning reuses the cache; delete `~/.semgrep/cache` (or run with a different ruleset) to force a refresh.
 - **Engine upgrades**: engines are pinned in `scripts/engines/registry.json` (`version` field). To upgrade an engine, bump the version there and re-run `scripts/codespot setup` (old versions stay in `~/.codespot/engines/` and can be deleted manually).
 - **Reset an engine**: `rm -rf ~/.codespot/engines/<name>-<version>` then `codespot setup`.

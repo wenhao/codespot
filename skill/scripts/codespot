@@ -290,6 +290,36 @@ def do_show(args):
     return 0
 
 
+def do_update_db(args):
+    """Download/refresh the local OSV vulnerability DB for offline dependency scans."""
+    spec = setup_engine.load_registry().get("osv-scanner")
+    if not spec:
+        sys.stderr.write("codespot update-db: osv-scanner not in registry\n")
+        return 2
+    exe = setup_engine.engine_binary("osv-scanner", spec["version"])
+    if not exe:
+        sys.stderr.write("codespot update-db: osv-scanner not installed (run codespot setup)\n")
+        return 2
+    import tempfile
+    with tempfile.TemporaryDirectory(prefix="codespot-db-") as tmpd:
+        lock = os.path.join(tmpd, "requirements.txt")
+        with open(lock, "w") as f:
+            f.write("# seed lockfile for database download\n")
+        cmd = [exe, "scan", "source", "--download-offline-databases",
+               "--offline-vulnerabilities", "--allow-no-lockfiles", "-L", lock]
+        try:
+            r = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
+        except subprocess.TimeoutExpired:
+            sys.stderr.write("codespot update-db: download timed out\n")
+            return 2
+        if r.returncode not in (0, 1):
+            sys.stderr.write("codespot update-db failed (exit %s): %s\n"
+                             % (r.returncode, r.stderr.strip()[:300]))
+            return 2
+    print("update-db: local OSV database refreshed (offline scans will now work)")
+    return 0
+
+
 def do_selftest(args):
     fixtures = os.path.join(os.path.dirname(HERE), "tests", "fixtures")
     if not os.path.isdir(fixtures):
@@ -410,6 +440,9 @@ def main():
     sp.add_argument("--limit", type=int, default=50)
     sp.add_argument("--all", action="store_true", help="show all matches")
     sp.set_defaults(fn=do_show)
+
+    sp = sub.add_parser("update-db", help="download/refresh the local OSV vulnerability DB (enables offline dependency scans)")
+    sp.set_defaults(fn=do_update_db)
 
     sp = sub.add_parser("selftest", help="run fixture-based regression across engines")
     sp.set_defaults(fn=do_selftest)

@@ -1,0 +1,79 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8">
+<title>codespot 开源项目验证报告 · 2026-09-23</title><style>
+body{font-family:-apple-system,'PingFang SC','Segoe UI',sans-serif;margin:0;background:#f6f8fa;color:#1f2328}
+.wrap{max-width:960px;margin:0 auto;padding:40px 24px}
+h1{font-size:28px} .sub{color:#59636e;margin-top:-8px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;margin:24px 0}
+.card{background:#fff;border:1px solid #d1d9e0;border-radius:10px;padding:18px}
+.card h3{margin:0 0 4px} .meta{color:#59636e;font-size:13px}
+.counts{display:flex;gap:10px;margin:12px 0}
+.c{display:flex;flex-direction:column;align-items:center;background:#f6f8fa;border-radius:8px;padding:8px 14px;font-size:20px;font-weight:700}
+.c label{font-size:11px;font-weight:400;color:#59636e}
+.c0{color:#cf222e} .c1{color:#bc4c00} .c2{color:#9a6700}
+.eng{font-size:13px;color:#59636e}
+table{border-collapse:collapse;width:100%;background:#fff;border:1px solid #d1d9e0;border-radius:8px}
+th,td{padding:10px 12px;border-bottom:1px solid #e7ebef;text-align:left;font-size:14px}
+th{background:#f6f8fa}
+code{background:#eff2f5;padding:1px 5px;border-radius:4px;font-size:13px}
+.cwe{background:#ffebe9;color:#cf222e;padding:1px 6px;border-radius:4px;font-size:12px;margin-left:6px}
+.note{background:#fff;border-left:4px solid #0969da;padding:12px 16px;margin:16px 0;border-radius:0 8px 8px 0}
+.ok{color:#1a7f37;font-weight:600}
+h2{margin-top:36px;border-bottom:1px solid #d1d9e0;padding-bottom:8px}
+</style></head><body><div class="wrap">
+<h1>codespot 开源项目验证报告</h1>
+<p class="sub">生成时间 2026-09-23 · 环境 macOS x86_64 · 8 引擎 · 每仓库执行 <code>codespot scan --scope all</code></p>
+<div class="note">✅ 三个仓库全部扫描成功，<b>零引擎失败</b>；覆盖 Python / JavaScript / Java 三大技术栈与 8 个检查维度中的 7 个（SQL 夹具已单独覆盖）。</div>
+<div class="cards">
+    <div class="card">
+      <h3>psf/requests</h3>
+      <p class="meta">Python · 128 文件 · 耗时 84s · 0 引擎错误</p>
+      <div class="counts">
+        <span class="c c0">0<label>严重</label></span>
+        <span class="c c1">143<label>重要</label></span>
+        <span class="c c2">599<label>次要</label></span>
+        <span class="c c3">783<label>合计</label></span>
+      </div>
+      <p class="eng">参与引擎：Python 安全、依赖漏洞、Python 质量、跨语言语义/taint</p>
+    </div>
+    <div class="card">
+      <h3>expressjs/express</h3>
+      <p class="meta">JavaScript · 212 文件 · 耗时 127s · 0 引擎错误</p>
+      <div class="counts">
+        <span class="c c0">0<label>严重</label></span>
+        <span class="c c1">642<label>重要</label></span>
+        <span class="c c2">71<label>次要</label></span>
+        <span class="c c3">714<label>合计</label></span>
+      </div>
+      <p class="eng">参与引擎：JS/TS 深度层、JS/TS 快速层、跨语言语义/taint</p>
+    </div>
+    <div class="card">
+      <h3>jhy/jsoup</h3>
+      <p class="meta">Java · 318 文件 · 耗时 265s · 0 引擎错误</p>
+      <div class="counts">
+        <span class="c c0">53<label>严重</label></span>
+        <span class="c c1">159<label>重要</label></span>
+        <span class="c c2">4560<label>次要</label></span>
+        <span class="c c3">4791<label>合计</label></span>
+      </div>
+      <p class="eng">参与引擎：Java 源码级、跨语言语义/taint、Java 字节码+安全</p>
+    </div></div>
+<h2>汇总对比</h2>
+<table><tr><th>仓库</th><th>耗时</th><th>合计</th><th>严重</th><th>重要</th><th>次要</th><th>引擎状态</th></tr>
+    <tr><td>psf/requests</td><td>84s</td><td>783</td>
+    <td>0</td><td>143</td><td>599</td>
+    <td>✅ 全部在线</td></tr>
+    <tr><td>expressjs/express</td><td>127s</td><td>714</td>
+    <td>0</td><td>642</td><td>71</td>
+    <td>✅ 全部在线</td></tr>
+    <tr><td>jhy/jsoup</td><td>265s</td><td>4791</td>
+    <td>53</td><td>159</td><td>4560</td>
+    <td>✅ 全部在线</td></tr></table>
+<h2>重点发现（验证引擎真实能力）</h2>
+<ul>
+<li><b>依赖漏洞（osv.dev 实时查询）</b>：psf/requests 的 vendored <code>idna</code> 旧版本命中已知 CVE：<ul><li><code>PYSEC-2026-215</code> idna: Internationalized Domain Names in Applicatio — upgrade to 3.15</li><li><code>GHSA-65pc-fj4g-8rjx</code> idna: Internationalized Domain Names in Applicatio — upgrade to 3.15</li></ul></li>
+<li><b>Java 深度层（SpotBugs+FindSecBugs，自动 Maven 编译后扫描）</b>：jhy/jsoup 检出 53 条 critical，典型模式：<ul><li><code>PREDICTABLE_RANDOM</code> <span class='cwe'>CWE-330</span></li><li><code>URLCONNECTION_SSRF_FD</code> <span class='cwe'>CWE-918</span></li><li><code>USO_UNSAFE_ACCESSIBLE_OBJECT_SYNCHRONIZATION</code> <span class='cwe'>CWE-412</span></li><li><code>USO_UNSAFE_OBJECT_SYNCHRONIZATION</code> <span class='cwe'>CWE-412</span></li><li><code>XPATH_INJECTION</code> <span class='cwe'>CWE-643</span></li><li><code>XXE_DTD_TRANSFORM_FACTORY</code> <span class='cwe'>CWE-611</span></li><li><code>XXE_XSLT_TRANSFORM_FACTORY</code> <span class='cwe'>CWE-611</span></li></ul></li>
+<li><b>JS/TS 双层去重</b>：express 中 oxlint 与 sonarjs 独立规则互补，无重复报告。</li>
+</ul>
+<h2>结论与推荐</h2>
+<p><b>推荐验证仓库：jhy/jsoup</b> —— 它触发 codespot 最复杂的编排链路（pom.xml 探测 → Maven 编译 → 字节码深度扫描），且 critical 数量多、可核实（XXE / SSRF / XPATH 注入均有 CWE 编号可查）。轻量备选：psf/requests（最快，且依赖漏洞命中现成）。</p>
+</div></body></html>
