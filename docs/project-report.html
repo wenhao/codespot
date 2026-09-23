@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>codespot 项目汇报 · 2026-09-23</title>
+<style>
+  :root{
+    --ink:#1f2328; --sub:#59636e; --line:#d1d9e0; --bg:#f6f8fa;
+    --blue:#0969da; --blue-bg:#eaf3fc; --green:#1a7f37; --green-bg:#e6f4ea;
+    --red:#cf222e; --red-bg:#ffebe9; --orange:#bc4c00; --orange-bg:#fff1e5;
+    --purple:#8250df; --purple-bg:#f6f2fd;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,"PingFang SC","Microsoft YaHei","Segoe UI",sans-serif;color:var(--ink);background:var(--bg);line-height:1.7}
+  .wrap{max-width:1020px;margin:0 auto;padding:48px 28px 80px}
+  h1{font-size:30px;margin:0 0 6px;letter-spacing:.5px}
+  h2{font-size:22px;margin:56px 0 16px;padding-bottom:10px;border-bottom:2px solid var(--ink);display:flex;align-items:center;gap:10px}
+  h2 .no{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:50%;background:var(--ink);color:#fff;font-size:15px;flex:none}
+  h3{font-size:16px;margin:26px 0 10px}
+  p{margin:8px 0}
+  .sub{color:var(--sub)}
+  .lead{font-size:15px}
+  .badges{margin-top:14px;display:flex;gap:8px;flex-wrap:wrap}
+  .badge{font-size:12px;padding:3px 10px;border-radius:99px;background:#fff;border:1px solid var(--line)}
+  .badge.b1{background:var(--green-bg);color:var(--green);border-color:#b5dfc3}
+  .badge.b2{background:var(--blue-bg);color:var(--blue)}
+  table{border-collapse:collapse;width:100%;background:#fff;border:1px solid var(--line);border-radius:10px;overflow:hidden;font-size:13.5px;margin:14px 0}
+  th{background:#eef2f6;text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);white-space:nowrap}
+  td{padding:9px 12px;border-bottom:1px solid #eaeff3;vertical-align:top}
+  tr:last-child td{border-bottom:none}
+  code{background:#eff2f5;padding:1px 6px;border-radius:4px;font-size:12.5px;font-family:ui-monospace,Menlo,monospace}
+  .note{background:#fff;border-left:4px solid var(--blue);padding:12px 18px;margin:16px 0;border-radius:0 10px 10px 0;font-size:14px}
+  .note.good{border-color:var(--green)}
+  .cols{display:grid;gap:14px}
+  .c3{grid-template-columns:repeat(3,1fr)}
+  .c2{grid-template-columns:repeat(2,1fr)}
+  @media(max-width:760px){.c3,.c2{grid-template-columns:1fr}}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px 18px}
+  .card h4{margin:0 0 8px;font-size:14.5px}
+  .card p{font-size:13px;color:var(--sub);margin:0}
+  .icon{font-size:22px}
+
+  /* gap cards */
+  .gap{border-top:3px solid var(--red)}
+  .gap h4{color:var(--red)}
+
+  /* architecture diagram */
+  .arch{background:#fff;border:1px solid var(--line);border-radius:14px;padding:24px;margin:16px 0}
+  .arch .user{margin:auto;width:max-content;background:var(--blue-bg);border:1px solid #bcd7f5;color:var(--blue);padding:8px 22px;border-radius:99px;font-weight:600}
+  .arrow{width:2px;height:22px;background:#9aa7b3;margin:2px auto;position:relative}
+  .arrow:after{content:"";position:absolute;bottom:-1px;left:50%;transform:translateX(-50%);border:5px solid transparent;border-top-color:#9aa7b3}
+  .cli-box{border:2px solid var(--ink);border-radius:12px;padding:14px 16px;background:#fbfcfd}
+  .cli-title{text-align:center;font-weight:700;font-size:14px;margin-bottom:10px}
+  .cli-flow{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+  .cli-step{background:#eef2f6;border:1px solid var(--line);border-radius:8px;padding:5px 12px;font-size:12.5px}
+  .engines{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px}
+  @media(max-width:760px){.engines{grid-template-columns:repeat(2,1fr)}}
+  .eng{border:1px solid var(--line);border-radius:10px;padding:9px 12px;font-size:12.5px;background:#fff}
+  .eng b{display:block;font-size:13px}
+  .eng.opt{border-style:dashed;background:#fffdf5}
+  .eng .tag{float:right;font-size:11px;color:var(--sub)}
+  .norm{margin-top:14px;background:var(--green-bg);border:1px solid #b5dfc3;border-radius:10px;padding:8px 14px;text-align:center;font-size:13px}
+  .reports{display:flex;gap:10px;margin-top:12px}
+  .rep{flex:1;border-radius:10px;padding:10px 14px;font-size:13px;border:1px solid var(--line);background:#fff}
+  .rep b{display:block;font-size:13.5px}
+  .loopbar{margin-top:12px;background:var(--orange-bg);border:1px solid #f3d5b5;border-radius:10px;padding:8px 14px;text-align:center;font-size:13px;color:var(--orange);font-weight:600}
+
+  /* agent workflow */
+  .flow{display:flex;flex-wrap:wrap;gap:0;margin:18px 0;align-items:stretch}
+  .step{flex:1;min-width:150px;background:#fff;border:1px solid var(--line);border-radius:10px;padding:12px;position:relative;margin-right:26px;margin-bottom:10px}
+  .step:before{content:"→";position:absolute;right:-21px;top:50%;transform:translateY(-50%);color:#9aa7b3;font-size:16px;font-weight:700}
+  .step:last-child{margin-right:0}.step:last-child:before{content:""}
+  .step .n{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:var(--blue);color:#fff;font-size:12px;font-weight:700;margin-bottom:6px}
+  .step b{display:block;font-size:13px}
+  .step span{font-size:12px;color:var(--sub)}
+  .lane{font-size:12px;color:var(--sub);margin:2px 0 8px}
+  .lane b{color:var(--ink)}
+
+  /* bar chart */
+  .chart{background:#fff;border:1px solid var(--line);border-radius:14px;padding:22px 24px;margin:16px 0}
+  .bar-row{display:grid;grid-template-columns:96px 1fr 64px;align-items:center;gap:10px;margin:10px 0}
+  .bar-label{font-size:13px;text-align:right;font-weight:600}
+  .bar-track{background:#eef2f6;border-radius:6px;height:24px;overflow:hidden}
+  .bar-fill{height:100%;border-radius:6px 0 0 6px;display:flex;align-items:center;padding-left:8px;color:#fff;font-size:11.5px;font-weight:700;min-width:34px}
+  .f1{background:linear-gradient(90deg,#0969da,#3c8ede)} .f2{background:linear-gradient(90deg,#8250df,#a78bfa)}
+  .f3{background:linear-gradient(90deg,#1a7f37,#4caf6d)} .f4{background:linear-gradient(90deg,#bf8700,#d4a72c)}
+  .f5{background:linear-gradient(90deg,#cf222e,#e5534b)} .f6{background:linear-gradient(90deg,#57606a,#8b949e)}
+  .bar-val{font-size:13px;font-weight:700}
+  .cap{font-size:12px;color:var(--sub);margin-top:10px}
+
+  /* feature cards */
+  .feat{border-top:3px solid var(--blue);position:relative}
+  .feat .kicker{font-size:11px;letter-spacing:2px;color:var(--blue);font-weight:700}
+  .feat.hot{border-top-color:var(--red)} .feat.hot .kicker{color:var(--red)}
+  .feat ul{margin:8px 0 0;padding-left:18px;font-size:13px;color:var(--sub)}
+  .feat li{margin:4px 0}
+
+  /* stats */
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:16px 0}
+  @media(max-width:760px){.stats{grid-template-columns:repeat(2,1fr)}}
+  .stat{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px;text-align:center}
+  .stat .v{font-size:24px;font-weight:800;color:var(--blue)}
+  .stat .v.red{color:var(--red)} .stat .v.green{color:var(--green)}
+  .stat .l{font-size:12px;color:var(--sub);margin-top:4px}
+
+  .concl{background:linear-gradient(135deg,#0d3b66,#0969da);color:#fff;border-radius:14px;padding:22px 26px;margin:20px 0}
+  .concl b{font-size:16px}
+  .concl p{margin:8px 0 0;font-size:13.5px;opacity:.92}
+  .crit-tags span{display:inline-block;background:var(--red-bg);color:var(--red);border-radius:6px;padding:1px 8px;font-size:12px;margin:2px 4px 2px 0}
+  footer{margin-top:60px;color:var(--sub);font-size:12px;text-align:center}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>codespot：面向 AI 编码时代的国产化静态代码扫描工具</h1>
+<p class="sub lead">项目立项、设计与交付情况汇报 · 汇报日期 2026-09-23</p>
+<div class="badges">
+  <span class="badge b1">✅ 已交付并投入试用（v1）</span>
+  <span class="badge b2">10 引擎 · 8+2 检查维度</span>
+  <span class="badge">纯本地 · 零服务器 · 零许可费</span>
+  <span class="badge">AI Agent 原生</span>
+</div>
+
+<!-- ============ 1 背景 ============ -->
+<h2><span class="no">1</span>背景：为什么需要 codespot</h2>
+<p class="lead">随着 AI 辅助编码在全行的普及，大量代码由开发人员借助行内外 AI 工具生成，在提效的同时引入了三类传统流程难以覆盖的风险：<b>质量风险</b>（逻辑缺陷、错误处理缺失，人工评审疲劳难以逐一把关）、<b>安全风险</b>（硬编码密钥、SQL 注入等漏洞模式频率显著偏高）、<b>供应链风险</b>（AI 倾向推荐携带已知 CVE 的旧版本依赖）。</p>
+
+<div class="cols c3">
+  <div class="card gap"><div class="icon">🤖</div><h4>仅靠 AI 模型扫描不够全面</h4><p>大模型审查非确定性：无规则库兜底、无 CVE 数据库、无密钥特征库，存在漏报与幻觉；逐文件人工喂模型无法工程化。</p></div>
+  <div class="card gap"><div class="icon">🧱</div><h4>传统工具游离于 AI Agent 生态之外</h4><p>SonarQube 系等面向 CI/服务器架构，必须部署服务端；AI Agent 无法本地按需调用，更没有"扫描→报告→修复"闭环。</p></div>
+  <div class="card gap"><div class="icon">🇨🇳</div><h4>国产化与自主可控要求</h4><p>主流工具均为国外产品且许可趋紧（SonarSource 2024 年底改 SSALv1，明确限制"用非捆绑 AI 摄取分析结果"）；核心安全工具依赖外部供应商存在合规与供应链风险。</p></div>
+</div>
+
+<div class="note"><b>项目定位</b>：建设<b>纯本地运行、完全融入 AI Agent 生态、全栈开源引擎、代码完全自主可控</b>的静态代码扫描 skill——AI 写完代码 → codespot 本地扫描 → AI 可读报告 → Agent 辅助修复 → 重扫验证，形成完整质量闭环。</div>
+
+<!-- ============ 2 方案 ============ -->
+<h2><span class="no">2</span>解决方案与方案设计</h2>
+<h3>2.1 两轮可行性调研（结论先行）</h3>
+<p>启动前完成两轮系统调研（详见《可行性调研报告》，30+ 组件当日实测核验）：① <b>Sonar 系路线证伪</b>——官方 CLI 必须连云端/服务器，SSALv1"禁止非捆绑 AI 摄取分析结果"与核心场景直接冲突；② <b>采纳路线</b>——干净许可开源引擎组合（MIT/Apache/LGPL）+"多引擎适配器+统一报告+AI 修复闭环"；③ <b>许可合规</b>——引擎运行时从官方源下载、不随工具分发，LGPL 零额外义务，Semgrep/TruffleHog 明确仅内部使用边界。</p>
+
+<h3>2.2 总体架构</h3>
+<div class="arch">
+  <div class="user">开发人员 / AI Agent："扫一下代码"</div>
+  <div class="arrow"></div>
+  <div class="cli-box">
+    <div class="cli-title">codespot 主控 CLI（Python 标准库 · 零第三方依赖）</div>
+    <div class="cli-flow">
+      <span class="cli-step">git 范围计算<br/><b>未提交→未推送→全量</b></span>
+      <span class="cli-step">引擎注册表<br/><b>版本锁定·分类·opt-in</b></span>
+      <span class="cli-step">并行调度<br/><b>失败隔离·优雅降级</b></span>
+    </div>
+    <div class="engines">
+      <div class="eng"><span class="tag">常开</span><b>🔐 gitleaks</b>密钥检测 · 222 规则 · 报告脱敏</div>
+      <div class="eng"><b>🐍 ruff + bandit</b>Python 质量+安全 · 535 规则</div>
+      <div class="eng"><b>🟨 oxlint + sonarjs</b>JS/TS 快+深双层 · 去重</div>
+      <div class="eng"><b>☕ PMD + SpotBugs/FSB</b>Java 源码+字节码双层</div>
+      <div class="eng"><b>🗄 SQLFluff</b>SQL 规范 · 方言探测</div>
+      <div class="eng"><b>🌐 Semgrep</b>跨语言 taint · 2800+ 规则</div>
+      <div class="eng"><b>📦 OSV-Scanner</b>依赖漏洞 · 离线库/在线</div>
+      <div class="eng"><b>🤖 AI 语义审查</b>agent 驱动 · 语义级缺陷</div>
+      <div class="eng opt"><span class="tag">opt-in</span><b>🕵️ TruffleHog</b>深度密钥 · 800+ 检测器</div>
+    </div>
+    <div class="norm">统一归一化：severity 四级 · CS 稳定编号 · 密钥强制脱敏</div>
+    <div class="reports">
+      <div class="rep"><b>report.json</b>Agent 机器接口（完整内部字段 + fixHint）</div>
+      <div class="rep"><b>report.md / codespot show</b>人类可读 · codespot 品牌 · CS 编号</div>
+    </div>
+  </div>
+  <div class="arrow"></div>
+  <div class="loopbar">↺ AI 修复闭环：修复选项 → Agent 修复 → 重扫验证（≤3 轮）→ 三类汇总</div>
+</div>
+<p class="sub" style="font-size:13px">关键设计：适配器统一契约（新增引擎零改基座）；人读界面统一品牌（稳定 CS-xxxxx 编号，不暴露底层工具名）；项目级三层规则配置（原生配置 &gt; codespot 配置 &gt; 内置默认）。工程上采用 OpenSpec 规格驱动开发，8 个变更批次全程可追溯。</p>
+
+<!-- ============ 3 Agent 生态 ============ -->
+<h2><span class="no">3</span>完全融入 AI Agent 生态（核心差异化）</h2>
+<p class="lead">codespot 不是"给人用的命令行工具顺便让 AI 调用"，而是<b>以 AI Agent 为第一用户设计</b>的 skill。一次真实使用闭环：</p>
+
+<div class="arch">
+  <div class="lane">👤 <b>开发人员</b> → 🤖 <b>AI Agent（内置 codespot skill）</b></div>
+  <div class="flow">
+    <div class="step"><span class="n">1</span><b>自然语言触发</b><span>"扫一下我刚生成的代码"——skill 自动识别，无需敲命令</span></div>
+    <div class="step"><span class="n">2</span><b>Agent 调用 CLI</b><span>codespot scan --scope auto（增量范围自动降级）</span></div>
+    <div class="step"><span class="n">3</span><b>10 引擎并行</b><span>按语言调度 · 失败隔离 · 秒到分钟级</span></div>
+    <div class="step"><span class="n">4</span><b>读机器报告</b><span>report.json 完整字段，呈现前先判断发现合理性</span></div>
+  </div>
+  <div class="flow">
+    <div class="step"><span class="n">5</span><b>结构化选项</b><span>严重 / 重要+ / 全部 / 先看详情（codespot show）</span></div>
+    <div class="step"><span class="n">6</span><b>Agent 修复</b><span>逐条修复；密钥发现强制"先轮换后清理"</span></div>
+    <div class="step"><span class="n">7</span><b>重扫验证</b><span>同 scope 重扫 ≤3 轮直至清零</span></div>
+    <div class="step"><span class="n">8</span><b>三类汇总</b><span>已修复 / 跳过（含理由）/ 剩余</span></div>
+  </div>
+</div>
+
+<table>
+  <tr><th style="width:36px">#</th><th style="width:150px">融入层面</th><th>实现</th></tr>
+  <tr><td>①</td><td><b>技能即插即用</b></td><td>标准 skill 目录，软链到 <code>~/.agents/skills/</code> 即被 ZCode 等 Agent 框架自动发现；自然语言（"扫一下代码 / 静态检查 / 有没有密钥泄漏"）自动触发</td></tr>
+  <tr><td>②</td><td><b>Agent 专属接口</b></td><td><code>report.json</code> 保留 tool/rule/ruleUrl/fixHint 完整字段供 AI 精确研究与修复；密钥强制脱敏防二次泄漏</td></tr>
+  <tr><td>③</td><td><b>交互修复闭环</b></td><td>修复选项结构化问答；修复循环（判断合理性→修复→重扫→汇总）由 SKILL.md 编排</td></tr>
+  <tr><td>④</td><td><b>AI 即引擎（首创）</b></td><td><code>--engine ai</code> 产出审查计划，Agent 本身作为第 10 个引擎执行语义级审查，结果经校验合并进统一报告</td></tr>
+  <tr><td>⑤</td><td><b>误报治理</b></td><td>Agent 判定误报可登记白名单（<code>.codespot/ignore</code> / <code>.gitleaksignore</code>），下次自动过滤</td></tr>
+  <tr><td>⑥</td><td><b>零服务器</b></td><td>纯本地 CLI，无需部署服务端与账号，任何 git 仓库即调即用</td></tr>
+</table>
+<div class="note good"><b>与"AI 直接读代码找问题"的本质区别</b>：AI 引擎与规则引擎<b>互补而非替代</b>——确定性规则、CVE 数据库、密钥特征库由工具兜底，AI 只负责规则抓不到的语义问题（逻辑/并发/错误处理/跨文件一致性）；两类发现同场呈现、同一修复闭环。这直接补齐了"仅 AI 扫描不全面"的痛点。</div>
+
+<!-- ============ 4 核心功能 ============ -->
+<h2><span class="no">4</span>核心功能亮点</h2>
+<h3>4.1 支持的语言与规则规模（实测口径，2026-09-23）</h3>
+<div class="chart">
+  <div class="bar-row"><div class="bar-label">跨语言 taint</div><div class="bar-track"><div class="bar-fill f1" style="width:100%">Semgrep registry</div></div><div class="bar-val">2800+</div></div>
+  <div class="bar-row"><div class="bar-label">Java</div><div class="bar-track"><div class="bar-fill f2" style="width:29.5%"></div></div><div class="bar-val">827</div></div>
+  <div class="bar-row"><div class="bar-label">JS / TS</div><div class="bar-track"><div class="bar-fill f3" style="width:19.6%"></div></div><div class="bar-val">550</div></div>
+  <div class="bar-row"><div class="bar-label">Python</div><div class="bar-track"><div class="bar-fill f4" style="width:19.1%"></div></div><div class="bar-val">535</div></div>
+  <div class="bar-row"><div class="bar-label">密钥检测</div><div class="bar-track"><div class="bar-fill f5" style="width:7.9%"></div></div><div class="bar-val">222</div></div>
+  <div class="bar-row"><div class="bar-label">SQL</div><div class="bar-track"><div class="bar-fill f6" style="width:1.7%"></div></div><div class="bar-val">48</div></div>
+  <div class="cap">构成：Python=ruff 503 + bandit 32；JS/TS=oxlint 335 + sonarjs 215；Java=PMD 213 + SpotBugs ~470 + FindSecBugs 144；跨语言=Semgrep registry；密钥=gitleaks（TruffleHog 800+ 检测器为可选深度层，未计入）；SQL=SQLFluff 语义组。语言覆盖另含 Go / C# / Kotlin / Ruby / PHP / Rust / Swift / Scala（Semgrep）。</div>
+</div>
+
+<h3>4.2 三张能力名片</h3>
+<div class="cols c3">
+  <div class="card feat hot"><span class="kicker">SECURITY · 常开</span><h4>🔐 密钥检测与活体验证</h4><ul>
+    <li>222 条规则全语言拦截硬编码密钥，报告强制脱敏</li>
+    <li>发现真实密钥工作流强制<b>先轮换、后清理</b></li>
+    <li>可选 TruffleHog 深度层：<b>800+ 检测器</b>覆盖小众与国产 SaaS 格式</li>
+    <li><b>密钥活体验证</b>（联网确认是否仍有效）默认关闭保离线合规，按需开启</li>
+  </ul></div>
+  <div class="card feat"><span class="kicker">SUPPLY CHAIN</span><h4>📦 依赖漏洞（SCA）</h4><ul>
+    <li>OSV-Scanner 查询 Google OSV 漏洞库</li>
+    <li><code>update-db</code> 一键离线库，断网环境可用</li>
+    <li>覆盖 requirements / package-lock / pom / go.mod / Cargo 等</li>
+    <li>每条附<b>升级目标版本</b>（如 pymysql → 1.1.1）可直接执行</li>
+  </ul></div>
+  <div class="card feat hot"><span class="kicker">AI NATIVE · 首创</span><h4>🤖 AI 语义审查</h4><ul>
+    <li><code>scan --engine ai</code> 生成审查计划（文件+schema+8 项语义重点）</li>
+    <li>Agent 审查静态规则抓不到的<b>逻辑/并发/错误处理/跨文件一致</b></li>
+    <li>结果带 confidence 经校验合并进统一报告</li>
+    <li><b>工具规则 + AI 语义双引擎互补</b></li>
+  </ul></div>
+</div>
+
+<h3>4.3 工程能力</h3>
+<table>
+  <tr><th>能力</th><th>说明</th></tr>
+  <tr><td><b>增量扫描</b></td><td>默认只扫未提交/未推送改动面，秒级~分钟级反馈，贴合 AI 高频迭代</td></tr>
+  <tr><td><b>治理与品牌</b></td><td>CS 稳定编号品牌层；三层规则删减/调参（原生配置 &gt; config.json &gt; 内置）；severity 覆盖；误报白名单</td></tr>
+  <tr><td><b>离线可用</b></td><td>联网 setup + update-db 一次后，除 Semgrep 外全部能力离线运行</td></tr>
+  <tr><td><b>回归自检</b></td><td><code>selftest</code> 10 引擎 × 9 夹具全绿（schema/品牌隔离/脱敏断言）</td></tr>
+  <tr><td><b>CI 友好</b></td><td>发现不改变退出码，流水线可发布报告不打断构建</td></tr>
+</table>
+
+<!-- ============ 5 开发投入 ============ -->
+<h2><span class="no">5</span>开发过程与投入</h2>
+<p><b>过程（规格驱动、逐批交付）</b>：调研（两轮）→ M0 基座+密钥/Python → M1 JS/TS+Java+修复循环 → M2 深度层 → 增量批次（Semgrep / 品牌与配置 / OSV 依赖+离线库 / TruffleHog / AI 语义审查）→ 文档（中英 README、验证报告）。实验性封装与 plugin 打包按决策裁剪。</p>
+<div class="stats">
+  <div class="stat"><div class="v">1 天</div><div class="l">开发周期（AI Agent 全程开发）</div></div>
+  <div class="stat"><div class="v">≈1 人天</div><div class="l">人工投入（决策与验收审阅）</div></div>
+  <div class="stat"><div class="v">≤2000 万</div><div class="l">AI tokens（调研子代理 750 万起）</div></div>
+  <div class="stat"><div class="v green">0 元</div><div class="l">软件许可成本</div></div>
+  <div class="stat"><div class="v">21</div><div class="l">git 提交</div></div>
+  <div class="stat"><div class="v">8</div><div class="l">OpenSpec 变更批次（全部归档）</div></div>
+  <div class="stat"><div class="v">~2500 行</div><div class="l">Python 标准库代码（零依赖）</div></div>
+  <div class="stat"><div class="v red">1~2%</div><div class="l">约为同等人工开发成本</div></div>
+</div>
+<p class="sub" style="font-size:13px">成本结论：以约一个人天的决策投入 + 极低 AI 算力成本（内部套餐百元级），交付了传统模式"选型评估数周 + 采购流程 + 集成开发数周"才能获得的能力组合。</p>
+
+<!-- ============ 6 验证效果 ============ -->
+<h2><span class="no">6</span>验证效果</h2>
+<h3>6.1 开源项目实测（三仓库 · 零引擎失败）</h3>
+<table>
+  <tr><th>仓库</th><th>语言/规模</th><th>耗时</th><th>发现</th><th>验证要点</th></tr>
+  <tr><td><code>psf/requests</code></td><td>Python · 128 文件</td><td>84s</td><td>783 条</td><td><b>依赖 CVE 真实命中</b>（vendored idna，附升级版本）</td></tr>
+  <tr><td><code>expressjs/express</code></td><td>JS · 212 文件</td><td>127s</td><td>714 条</td><td>JS 双层互补<b>无重复报告</b></td></tr>
+  <tr><td><code>jhy/jsoup</code></td><td>Java · 318 文件</td><td>265s</td><td>4791 条（<b style="color:var(--red)">53 critical</b>）</td><td>全链路（Maven 编译→SpotBugs 深度层）命中：<span class="crit-tags"><span>XXE</span><span>SSRF</span><span>XPATH 注入</span><span>可预测随机数</span></span>均带 CWE 编号</td></tr>
+</table>
+<h3>6.2 内部项目实战（kaipanla 行情项目）</h3>
+<ul style="font-size:14px">
+  <li><b>54 条依赖漏洞</b>，critical 含 PyMySQL SQL 注入（→1.1.1）、anyio TLS 校验缺陷——真实可核实；</li>
+  <li>7 条 ruff S608 SQL 注入 critical（增量未覆盖的历史文件）；</li>
+  <li>修复循环实战：自动修复 <code>zip()</code> 缺 strict、NaN 判定、<code>global</code> 反模式，重扫验证无回归。</li>
+</ul>
+<div class="note good"><b>回归质量</b>：selftest 10 引擎全绿（schema / 品牌隔离 / 脱敏断言）；人读报告经引擎名全文检索零泄漏。完整数据见 <code>docs/validation-report.html</code>。</div>
+
+<!-- ============ 7 ROI ============ -->
+<h2><span class="no">7</span>ROI 分析</h2>
+<div class="cols c2">
+  <div class="card" style="border-top:3px solid var(--green)"><h4 style="color:var(--green)">收益（年度视角）</h4>
+    <ul style="font-size:13px;color:var(--sub);padding-left:18px;margin:8px 0 0">
+      <li><b>许可节省</b>：对标商业 SAST/SCA 组合 10~30 万元/年 → 0</li>
+      <li><b>评审效率</b>：20 人团队年省约 <b>250 人时</b>（保守估算）</li>
+      <li><b>风险规避（主要价值）</b>：密钥入库前拦截、供应链漏洞提前发现；单次事件处置成本即远超本项目全部投入</li>
+      <li><b>国产化合规</b>：自主可控，规避 SSALv1 类许可与外采供应链风险</li>
+      <li><b>能力复用</b>：新增引擎约半天/个；AI 审查机制可平移其他 Agent 场景</li>
+    </ul></div>
+  <div class="card" style="border-top:3px solid var(--line)"><h4>投入（一次性）</h4>
+    <ul style="font-size:13px;color:var(--sub);padding-left:18px;margin:8px 0 0">
+      <li>人工约 <b>1 人天</b>（需求决策与验收）</li>
+      <li>AI 算力 2000 万 tokens 以内（内部套餐<b>百元级</b>）</li>
+      <li>许可费 <b>0 元</b></li>
+      <li>维护：引擎升级改注册表版本号即可；规则微调走项目级配置，不改代码</li>
+    </ul></div>
+</div>
+<div class="concl"><b>结论</b><p>投入极低、交付完整、验证充分；单次风险事件的避免即可覆盖全部成本。建议纳入 AI 编码标准工作流（<b>AI 生成 → codespot 扫描 → 修复 → 提交</b>）并在团队推广。</p></div>
+
+<!-- ============ 8 边界 ============ -->
+<h2><span class="no">8</span>边界与后续建议（如实说明）</h2>
+<ul style="font-size:14px">
+  <li>Semgrep 规则许可限内部使用，工具不可对外销售/分发（已写入文档边界）；</li>
+  <li>Windows 需约一天适配（Semgrep 需 WSL2）；当前 macOS / Linux 验证充分；</li>
+  <li>TruffleHog 密钥活体验证默认关闭（合规考虑），需要时手动开启；</li>
+  <li>AI 语义审查发现为建议性（附 confidence），最终由人决策。</li>
+</ul>
+<footer>附：项目仓库内含《可行性调研报告》《验证报告（HTML）》《中英文 README》与全部 OpenSpec 规格归档（8 个变更批次），可供审计与复盘。</footer>
+</div>
+</body>
+</html>
