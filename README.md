@@ -186,6 +186,9 @@ Engines are self-contained adapters. To add one:
 
 codespot is an internal tool. Semgrep CE and its registry rules are used under the Semgrep Rules License "internal business purposes" only — rules are fetched at runtime on the user's machine and are not bundled with or distributed by codespot. Do not sell or externally distribute codespot with this engine enabled.
 
+## Windows / offline quick notes
+See [README.zh.md](README.zh.md) 平台兼容性与离线使用指南 sections: Windows works except Semgrep (WSL2/Docker needed) plus small registry/wrapper additions; offline usage requires `codespot setup` + `codespot update-db` done once while online.
+
 ## Documentation
 - [可行性调研报告](docs/feasibility-research.md) — 技术选型、引擎矩阵、路线对比、实现设计与并行迭代计划（2026-09-23，两轮调研）
 - 实施按 OpenSpec 变更分批推进：`openspec/changes/archive/`（M0 基座、M1 JS/TS + Java + 修复循环、M2 深度层、semgrep 与依赖扫描均已交付；实验性 M3/M4 已取消）
