@@ -1,3 +1,4 @@
 .zcode/
 .openspec.yaml
 .codespot/
+.DS_Store
