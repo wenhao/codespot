@@ -1,53 +1,91 @@
 {
-  "version": 2,
+  "version": 3,
   "engines": {
     "gitleaks": {
       "name": "gitleaks",
       "adapter": "engine_secrets.py",
-      "languages": ["*"],
+      "languages": [
+        "*"
+      ],
       "always_on": true,
       "required": true,
       "runtime": "none",
       "version": "8.30.1",
       "download": {
         "url": "https://github.com/gitleaks/gitleaks/releases/download/v{version}/gitleaks_{version}_{os}_{arch}.{ext}",
-        "os_map": { "darwin": "darwin", "linux": "linux" },
-        "arch_map": { "arm64": "arm64", "x86_64": "x64" },
-        "ext_map": { "darwin": "tar.gz", "linux": "tar.gz" }
+        "os_map": {
+          "darwin": "darwin",
+          "linux": "linux"
+        },
+        "arch_map": {
+          "arm64": "arm64",
+          "x86_64": "x64"
+        },
+        "ext_map": {
+          "darwin": "tar.gz",
+          "linux": "tar.gz"
+        }
       },
       "checksum": null
     },
     "ruff": {
       "name": "ruff",
       "adapter": "engine_py.py",
-      "languages": ["py"],
+      "languages": [
+        "py"
+      ],
       "always_on": false,
       "required": false,
       "runtime": "none",
       "version": "0.16.8",
       "download": {
         "url": "https://github.com/astral-sh/ruff/releases/download/{version}/ruff-{arch}-{os}.{ext}",
-        "os_map": { "darwin": "apple-darwin", "linux": "unknown-linux-gnu" },
-        "arch_map": { "arm64": "aarch64", "x86_64": "x86_64" },
-        "ext_map": { "darwin": "tar.gz", "linux": "tar.gz" }
+        "os_map": {
+          "darwin": "apple-darwin",
+          "linux": "unknown-linux-gnu"
+        },
+        "arch_map": {
+          "arm64": "aarch64",
+          "x86_64": "x86_64"
+        },
+        "ext_map": {
+          "darwin": "tar.gz",
+          "linux": "tar.gz"
+        }
       },
       "checksum": null
     },
     "oxlint": {
       "name": "oxlint",
       "adapter": "engine_js.py",
-      "languages": ["js", "jsx", "ts", "tsx"],
+      "languages": [
+        "js",
+        "jsx",
+        "ts",
+        "tsx"
+      ],
       "always_on": false,
       "required": false,
       "runtime": "none",
       "version": "1.85.0",
       "download": {
         "url": "https://github.com/oxc-project/oxc/releases/download/oxlint_v{version}/oxlint-{arch}-{os}.{ext}",
-        "os_map": { "darwin": "apple-darwin", "linux": "unknown-linux-gnu" },
-        "arch_map": { "arm64": "aarch64", "x86_64": "x86_64" },
-        "ext_map": { "darwin": "tar.gz", "linux": "tar.gz" }
+        "os_map": {
+          "darwin": "apple-darwin",
+          "linux": "unknown-linux-gnu"
+        },
+        "arch_map": {
+          "arm64": "aarch64",
+          "x86_64": "x86_64"
+        },
+        "ext_map": {
+          "darwin": "tar.gz",
+          "linux": "tar.gz"
+        }
       },
-      "layout": { "archive_binary": "oxlint-{arch}-{os}" },
+      "layout": {
+        "archive_binary": "oxlint-{arch}-{os}"
+      },
       "checksum": null
     },
     "eslint-layer": {
@@ -70,14 +108,19 @@
     "pmd": {
       "name": "pmd",
       "adapter": "engine_java.py",
-      "languages": ["java"],
+      "languages": [
+        "java"
+      ],
       "always_on": false,
       "required": false,
       "runtime": "java",
       "version": "7.27.0",
       "download": {
         "url": "https://github.com/pmd/pmd/releases/download/pmd_releases%2F{version}/pmd-dist-{version}-bin.{ext}",
-        "ext_map": { "darwin": "zip", "linux": "zip" }
+        "ext_map": {
+          "darwin": "zip",
+          "linux": "zip"
+        }
       },
       "layout": {
         "archive_dir": "pmd-bin-{version}",
@@ -85,6 +128,76 @@
         "wrapper": true
       },
       "checksum": null
+    },
+    "bandit": {
+      "name": "bandit",
+      "adapter": "engine_bandit.py",
+      "languages": [
+        "py"
+      ],
+      "always_on": false,
+      "required": false,
+      "runtime": "python3",
+      "version": "1.9.4",
+      "install": "venv",
+      "pip_deps": {
+        "bandit": "1.9.4"
+      },
+      "checksum": null,
+      "pip_deps_fallback": {
+        "bandit": "1.8.6"
+      },
+      "min_python": "3.10"
+    },
+    "sqlfluff": {
+      "name": "sqlfluff",
+      "adapter": "engine_sql.py",
+      "languages": [
+        "sql"
+      ],
+      "always_on": false,
+      "required": false,
+      "runtime": "python3",
+      "version": "4.3.0",
+      "install": "venv",
+      "pip_deps": {
+        "sqlfluff": "4.3.0"
+      },
+      "checksum": null,
+      "pip_deps_fallback": {
+        "sqlfluff": "3.4.2"
+      },
+      "min_python": "3.10"
+    },
+    "spotbugs": {
+      "name": "spotbugs",
+      "adapter": null,
+      "internal": true,
+      "languages": [],
+      "always_on": false,
+      "required": false,
+      "runtime": "java",
+      "version": "4.10.4",
+      "download": {
+        "url": "https://github.com/spotbugs/spotbugs/releases/download/{version}/spotbugs-{version}.zip",
+        "ext_map": {
+          "darwin": "zip",
+          "linux": "zip"
+        }
+      },
+      "layout": {
+        "archive_dir": "spotbugs-4.10.4",
+        "binary": "bin/spotbugs",
+        "wrapper": true
+      },
+      "extra_downloads": [
+        {
+          "name": "findsecbugs-plugin-1.14.0.jar",
+          "url": "https://repo1.maven.org/maven2/com/h3xstream/findsecbugs/findsecbugs-plugin/1.14.0/findsecbugs-plugin-1.14.0.jar"
+        }
+      ],
+      "checksum": null,
+      "version_flag": "-version"
     }
   }
 }

@@ -36,13 +36,16 @@ def engine_bin_dir(name, version):
 
 
 def engine_binary(name, version):
-    """Path to the installed binary, or None if not installed/verified."""
+    """Path to the installed binary (or engine dir for npm/venv), or None."""
     d = engine_bin_dir(name, version)
     if not os.path.isfile(os.path.join(d, ".ok")):
         return None
     exe = os.path.join(d, name)
     if os.path.isfile(exe):
         return exe
+    for inner in (os.path.join(d, "bin", name),):
+        if os.path.isfile(inner):
+            return inner
     # npm-form engines have no binary; presence of .ok is the contract
     return d if os.path.isdir(os.path.join(d, "node_modules")) else None
 
@@ -84,6 +87,8 @@ def setup_engine(spec):
         os.makedirs(dest_dir, exist_ok=True)
         if spec.get("install") == "npm":
             return _setup_npm(spec, dest_dir)
+        if spec.get("install") == "venv":
+            return _setup_venv(spec, dest_dir)
         return _setup_binary(spec, dest_dir)
     except Exception as e:
         shutil.rmtree(dest_dir, ignore_errors=True)
@@ -92,10 +97,10 @@ def setup_engine(spec):
             % (name, e, dest_dir))
 
 
-def _verify(exe, name):
-    r = subprocess.run([exe, "--version"], capture_output=True, text=True, timeout=60)
+def _verify(exe, name, flag="--version"):
+    r = subprocess.run([exe, flag], capture_output=True, text=True, timeout=60)
     if r.returncode != 0:
-        raise RuntimeError("%s --version failed: %s" % (name, (r.stderr or r.stdout).strip()[:200]))
+        raise RuntimeError("%s %s failed: %s" % (name, flag, (r.stderr or r.stdout).strip()[:200]))
     return (r.stdout or r.stderr).strip()
 
 
@@ -150,7 +155,11 @@ def _setup_binary(spec, dest_dir):
                 raise RuntimeError("binary %s not found in archive" % name)
             shutil.copy2(src, exe)
             os.chmod(exe, os.stat(exe).st_mode | stat.S_IEXEC)
-        ok = _verify(exe, name)
+        ok = _verify(exe, name, spec.get("version_flag", "--version"))
+        for extra in spec.get("extra_downloads", []):
+            target = os.path.join(tree if layout.get("wrapper") else dest_dir, extra["name"])
+            print("setup: downloading %s" % extra["name"])
+            _download(extra["url"], target)
         with open(os.path.join(dest_dir, ".ok"), "w") as f:
             f.write(ok or "ok")
         print("setup: %s %s installed (%s)" % (name, version, exe))
@@ -175,6 +184,39 @@ def _setup_npm(spec, dest_dir):
         raise RuntimeError("npm install failed: %s" % (r.stderr or r.stdout).strip()[:300])
     with open(os.path.join(dest_dir, ".ok"), "w") as f:
         f.write("npm layer ok")
+    print("setup: %s %s installed (%s)" % (spec["name"], spec["version"], dest_dir))
+    return dest_dir
+
+
+def _setup_venv(spec, dest_dir):
+    py = shutil.which("python3")
+    if not py:
+        raise RuntimeError("python3 not found; %s (venv form) skipped" % spec["name"])
+    if not os.path.isdir(os.path.join(dest_dir, "bin")):
+        r = subprocess.run([py, "-m", "venv", dest_dir], capture_output=True, text=True, timeout=300)
+        if r.returncode != 0:
+            raise RuntimeError("venv creation failed: %s" % r.stderr.strip()[:300])
+    vpy = os.path.join(dest_dir, "bin", "python")
+    deps = spec.get("pip_deps", {})
+    if spec.get("min_python"):
+        r = subprocess.run([vpy, "-c", "import sys;print('%d.%d'%sys.version_info[:2])"],
+                           capture_output=True, text=True)
+        venv_ver = r.stdout.strip()
+        need = tuple(int(x) for x in spec["min_python"].split("."))
+        have = tuple(int(x) for x in venv_ver.split("."))
+        if have < need:
+            deps = spec.get("pip_deps_fallback", deps)
+            print("setup: python %s < %s, using fallback pins for %s"
+                  % (venv_ver, spec["min_python"], spec["name"]))
+    pip = os.path.join(dest_dir, "bin", "pip")
+    pkgs = " ".join("%s==%s" % (k, v) for k, v in deps.items())
+    print("setup: pip install for %s %s" % (spec["name"], spec["version"]))
+    r = subprocess.run([pip, "install", "--no-input", "--quiet"] + pkgs.split(),
+                       capture_output=True, text=True, timeout=600)
+    if r.returncode != 0:
+        raise RuntimeError("pip install failed: %s" % (r.stderr or r.stdout).strip()[:300])
+    with open(os.path.join(dest_dir, ".ok"), "w") as f:
+        f.write("venv ok")
     print("setup: %s %s installed (%s)" % (spec["name"], spec["version"], dest_dir))
     return dest_dir
 

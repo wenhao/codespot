@@ -33,5 +33,19 @@
       "default": "minor",
       "rules": {}
     }
+  },
+  "sqlfluff": {
+    "default": "major",
+    "rules": {
+      "PRS": "minor"
+    }
+  },
+  "bandit": {
+    "default": "major",
+    "rules": {}
+  },
+  "spotbugs": {
+    "default": "major",
+    "rules": {}
   }
 }

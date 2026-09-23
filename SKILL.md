@@ -1,11 +1,11 @@
 ---
 name: codespot
-description: Local static code scanning for AI-generated code. Use whenever the user asks to scan, lint, or statically check code, find bugs, secrets leaks, or security issues in their working tree — including phrases like "扫一下代码", "检查一下刚生成的代码", "静态检查", "扫扫这个 Java 文件", "检查 JS 代码", "有没有密钥泄漏" — even when they don't name codespot.
+description: Local static code scanning for AI-generated code. Use whenever the user asks to scan, lint, or statically check code, find bugs, secrets leaks, or security issues in their working tree — including phrases like "扫一下代码", "检查一下刚生成的代码", "静态检查", "扫扫这个 Java 文件", "检查 JS 代码", "检查 SQL 规范", "有没有密钥泄漏" — even when they don't name codespot.
 ---
 
 # codespot
 
-本地多引擎静态扫描 + AI 修复循环。对 git 范围内（未提交 / 未推送 / 全量）的代码运行 gitleaks（密钥）、ruff（Python）、oxlint + ESLint/sonarjs（JS/TS）、PMD（Java），产出 AI 可读的 `.codespot/report.json` 与人读的 `report.md`。
+本地多引擎静态扫描 + AI 修复循环。对 git 范围内（未提交 / 未推送 / 全量）的代码运行 gitleaks（密钥）、ruff（Python 质量）、bandit（Python 安全）、oxlint + ESLint/sonarjs（JS/TS）、PMD + SpotBugs/FindSecBugs（Java，后者需项目可编译）、SQLFluff（SQL），产出 AI 可读的 `.codespot/report.json` 与人读的 `report.md`。
 
 ## 工作流
 
