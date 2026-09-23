@@ -34,7 +34,12 @@ description MUST 额外覆盖 JS/TS 与 Java 项目场景（"检查一下 JS 代
 
 ### Requirement: 编排指令升级为修复循环
 
-SKILL.md 编排 SHALL 升级为完整修复循环（见 fix-loop 能力）：修复范围选项、合理性判断、≤3 轮重扫验证、误报登记、不自动 commit。
+SKILL.md 修复选项 SHALL 增加"先查看问题详情"：agent 以 `codespot show` 分批呈现详情（按严重级/文件分组，含 CS 编号）后，重新呈现修复选项；呈现给用户的文案 MUST NOT 出现底层引擎名，涉及规则时只用 CS 编号；引擎名仅允许出现在 agent 内部决策（读 report.json）中。
+
+#### Scenario: 先看详情再决策
+
+- **WHEN** 用户选择"先查看问题详情"
+- **THEN** agent 用 show 呈现详情后重新给出修复选项
 
 #### Scenario: 修复循环演练
 
