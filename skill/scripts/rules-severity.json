@@ -47,5 +47,9 @@
   "spotbugs": {
     "default": "major",
     "rules": {}
+  },
+  "trufflehog": {
+    "default": "critical",
+    "rules": {}
   }
 }

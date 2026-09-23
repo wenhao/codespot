@@ -6,7 +6,8 @@
     "SampleBad.java",
     "sample_security.py",
     "sample_bad.sql",
-    "requirements.txt"
+    "requirements.txt",
+    "fake_key.pem"
   ],
   "expectations": {
     "ruff": {
@@ -66,6 +67,12 @@
       "rules": [],
       "forbidden_snippets": [],
       "min_count": 1
+    },
+    "trufflehog": {
+      "rules": [
+        "PrivateKey"
+      ],
+      "forbidden_snippets": []
     }
   }
 }

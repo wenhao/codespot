@@ -5,7 +5,7 @@ description: Local static code scanning for AI-generated code. Use whenever the 
 
 # codespot
 
-本地多引擎静态扫描 + AI 修复循环。对 git 范围内（未提交 / 未推送 / 全量）的代码运行 gitleaks（密钥）、ruff（Python 质量）、bandit（Python 安全）、oxlint + ESLint/sonarjs（JS/TS）、PMD + SpotBugs/FindSecBugs（Java，后者需项目可编译）、SQLFluff（SQL）、Semgrep CE（跨语言语义/taint：Go、C#、Kotlin、Ruby、PHP、Rust、Terraform 等；规则从官方 registry 运行时拉取，首次扫描需联网）、OSV-Scanner（依赖漏洞/供应链：查 requirements、package-lock、pom.xml、go.mod 等清单里的已知 CVE，需联网），产出 AI 可读的 `.codespot/report.json` 与人读的 `report.md`。
+本地多引擎静态扫描 + AI 修复循环。对 git 范围内（未提交 / 未推送 / 全量）的代码运行 gitleaks（密钥）、ruff（Python 质量）、bandit（Python 安全）、oxlint + ESLint/sonarjs（JS/TS）、PMD + SpotBugs/FindSecBugs（Java，后者需项目可编译）、SQLFluff（SQL）、Semgrep CE（跨语言语义/taint：Go、C#、Kotlin、Ruby、PHP、Rust、Terraform 等；规则从官方 registry 运行时拉取，首次扫描需联网）、OSV-Scanner（依赖漏洞/供应链：查 requirements、package-lock、pom.xml、go.mod 等清单里的已知 CVE，需联网）、TruffleHog（可选深度密钥检测，800+ 检测器，仅在用户 `--engine trufflehog` 显式指定时运行），产出 AI 可读的 `.codespot/report.json` 与人读的 `report.md`。
 
 ## 工作流
 
@@ -22,6 +22,7 @@ description: Local static code scanning for AI-generated code. Use whenever the 
 3. **读报告**：读 `.codespot/report.json`。`engine_errors` 非空时如实说明哪些引擎失败，不要假装扫描完整。
 4. **呈现 + 修复选项**：用中文摘要（各严重级数量、最关键的几条），**必须**用 AskUserQuestion 呈现：
    - 先查看问题详情（用 `codespot show` 按严重级/文件分批呈现，看完回到本选项）
+   - （报告含密钥发现时可提示）启用深度密钥检测：`codespot scan --engine trufflehog`——800+ 检测器；默认 `--no-verification` 纯本地检测，不联网验证密钥是否存活
    - 仅修复 🔴 严重（critical）
    - 修复 🟠 重要及以上（major+）
    - 全部修复

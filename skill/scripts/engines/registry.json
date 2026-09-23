@@ -273,6 +273,35 @@
       "raw_binary": true,
       "checksum": null,
       "selftest_optional": true
+    },
+    "trufflehog": {
+      "name": "trufflehog",
+      "adapter": "engine_trufflehog.py",
+      "languages": [
+        "*"
+      ],
+      "always_on": false,
+      "opt_in": true,
+      "required": false,
+      "runtime": "none",
+      "category": "secrets_deep",
+      "version": "3.97.6",
+      "download": {
+        "url": "https://github.com/trufflesecurity/trufflehog/releases/download/v{version}/trufflehog_{version}_{os}_{arch}.{ext}",
+        "os_map": {
+          "darwin": "darwin",
+          "linux": "linux"
+        },
+        "arch_map": {
+          "arm64": "arm64",
+          "x86_64": "amd64"
+        },
+        "ext_map": {
+          "darwin": "tar.gz",
+          "linux": "tar.gz"
+        }
+      },
+      "checksum": null
     }
   }
 }

@@ -46,6 +46,8 @@ Engines are downloaded into `~/.codespot/engines/` (version-locked); reports lan
 | `codespot report` | Print the last report.json |
 | `codespot selftest` | Fixture-based regression across all engines |
 
+**Opt-in engines**: registry entries marked `opt_in` (currently TruffleHog) never run by default — request them with a repeatable `--engine <name>` flag, or enable permanently via `.codespot/config.json`: `{"rules": {"secrets_deep": {"enabled": true}}}`.
+
 **Scan scopes** (`--scope`): `auto` (default: first non-empty of uncommitted → unpushed → all), `uncommitted` (includes untracked), `unpushed` (falls back to `main` if no upstream), `ref:<ref>`, `all`.
 
 **Exit codes** (scan/setup): `0` = completed (findings don't change this — the agent decides what to do with the report); `2` = orchestration/setup failure. CI tip: scan always exits 0 when the run itself succeeded, so a pipeline step can publish reports without failing the build.
@@ -64,6 +66,7 @@ Engines are downloaded into `~/.codespot/engines/` (version-locked); reports lan
 | `sql` | SQLFluff | python3 (venv-isolated) | dialect auto-detection chain |
 | `semantic` | Semgrep CE 1.177 (fallback 1.136 on py3.9) | python3 (venv) | Go/C#/Kotlin/Ruby/PHP/Rust/Terraform…; rules fetched from official registry |
 | `dependencies` | OSV-Scanner 2.6 | — (queries osv.dev) | scans requirements/lockfiles/pom/go.mod for known CVEs |
+| `secrets_deep` (**opt-in**) | TruffleHog 3.97 | — | 800+ detectors; `--no-verification` by default (fully local); runs only via `--engine trufflehog` or `rules.secrets_deep.enabled` |
 
 ### Rules per language — counts & de-duplication
 

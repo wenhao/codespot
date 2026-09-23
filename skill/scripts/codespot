@@ -40,22 +40,33 @@ def ensure_scope_list(root, scope, out_path):
     return effective, entries
 
 
-def select_engines(entries):
+def select_engines(entries, requested=None):
     """Pick adapters per registry: language engines if they match a target file, always_on always.
-    Categories disabled via .codespot/config.json rules.<cat>.disabled are skipped."""
+    Categories disabled via .codespot/config.json rules.<cat>.disabled are skipped.
+    Opt-in engines (registry opt_in: true) run only when explicitly requested via
+    --engine or enabled via .codespot/config.json rules.<category>.enabled."""
     from common import load_project_config
     registry = setup_engine.load_registry()
-    disabled = {cat for cat, c in (load_project_config().get("rules") or {}).items()
-                if isinstance(c, dict) and c.get("disabled")}
+    conf_rules = load_project_config().get("rules") or {}
+    disabled = {cat for cat, c in conf_rules.items() if isinstance(c, dict) and c.get("disabled")}
+    enabled_cats = {cat for cat, c in conf_rules.items() if isinstance(c, dict) and c.get("enabled")}
+    requested = set(requested or [])
     langs = {e.get("language") for e in entries if e.get("language")}
     chosen = []
     for key, spec in registry.items():
         if spec.get("internal"):
             continue
-        if spec.get("category") in disabled:
+        cat = spec.get("category")
+        if cat in disabled:
             continue
-        if spec.get("always_on") or (spec.get("languages") != ["*"] and langs.intersection(spec.get("languages", []))):
-            chosen.append((key, spec))
+        if spec.get("opt_in"):
+            if key not in requested and cat not in enabled_cats:
+                continue
+        elif spec.get("always_on") or (spec.get("languages") != ["*"] and langs.intersection(spec.get("languages", []))):
+            pass
+        else:
+            continue
+        chosen.append((key, spec))
     return chosen
 
 
@@ -151,6 +162,7 @@ def render_md(payload):
 
 def do_scan(args):
     root = repo_root(args)
+    requested_engines = args.engines or []
     if not os.path.isdir(os.path.join(root, ".git")):
         sys.stderr.write("codespot: %s is not a git repository\n" % root)
         return 2
@@ -168,7 +180,7 @@ def do_scan(args):
         print("scan: nothing to scan, report written")
         return 0
 
-    chosen = select_engines(entries)
+    chosen = select_engines(entries, requested_engines)
     if not chosen:
         sys.stderr.write("codespot: no engine matches the target files\n")
         return 2
@@ -428,6 +440,8 @@ def main():
 
     sp = sub.add_parser("scan", help="run all matching engines and write reports")
     sp.add_argument("--scope", default="auto")
+    sp.add_argument("--engine", action="append", dest="engines",
+                    help="explicitly run an opt-in engine (e.g. trufflehog); repeatable")
     sp.set_defaults(fn=do_scan)
 
     sp = sub.add_parser("report", help="print last report.json")
