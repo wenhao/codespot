@@ -144,7 +144,6 @@
 <h1>codespot：面向 AI 编码时代的国产化静态代码扫描工具</h1>
 <p class="sub lead">项目立项、设计与交付情况汇报 · 汇报日期 2026-09-23</p>
 <div class="badges">
-  <span class="badge b1">✅ 已交付并投入试用（v1）</span>
   <span class="badge b2">10 引擎 · 8+2 检查维度</span>
   <span class="badge">纯本地 · 零服务器 · 零许可费</span>
   <span class="badge">AI Agent 原生</span>
@@ -350,13 +349,6 @@ codespot <span class="d">selftest</span>                   <span class="c"># 10 
   <tr><td><code>expressjs/express</code></td><td>JS · 212 文件</td><td>127s</td><td>714 条</td><td>JS 双层互补<b>无重复报告</b></td></tr>
   <tr><td><code>jhy/jsoup</code></td><td>Java · 318 文件</td><td>265s</td><td>4791 条（<b style="color:var(--red)">53 critical</b>）</td><td>全链路（Maven 编译→SpotBugs 深度层）命中：<span class="crit-tags"><span>XXE</span><span>SSRF</span><span>XPATH 注入</span><span>可预测随机数</span></span>均带 CWE 编号</td></tr>
 </table>
-<h3>6.2 内部项目实战（kaipanla 行情项目）</h3>
-<ul style="font-size:14px">
-  <li><b>54 条依赖漏洞</b>，critical 含 PyMySQL SQL 注入（→1.1.1）、anyio TLS 校验缺陷——真实可核实；</li>
-  <li>7 条 ruff S608 SQL 注入 critical（增量未覆盖的历史文件）；</li>
-  <li>修复循环实战：自动修复 <code>zip()</code> 缺 strict、NaN 判定、<code>global</code> 反模式，重扫验证无回归。</li>
-</ul>
-<div class="note good"><b>回归质量</b>：selftest 10 引擎全绿（schema / 品牌隔离 / 脱敏断言）；人读报告经引擎名全文检索零泄漏。完整数据见 <code>docs/validation-report.html</code>。</div>
 
 <!-- ============ 7 ROI ============ -->
 <h2><span class="no">7</span>ROI 分析</h2>

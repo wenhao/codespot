@@ -234,16 +234,6 @@ codespot selftest                   # 10 引擎 × 夹具回归自检
 | expressjs/express | JS·212 文件 | 127s | 714 条 | JS 双层互补**无重复报告** |
 | jhy/jsoup | Java·318 文件 | 265s | 4791 条（**53 critical**） | 全链路（Maven 编译→SpotBugs）：**XXE、SSRF、XPATH 注入、可预测随机数**，均带 CWE |
 
-### 6.2 内部项目实战（kaipanla）
-
-- **54 条依赖漏洞**，critical 含 PyMySQL SQL 注入（→1.1.1）、anyio TLS 缺陷——真实可核实；
-- 7 条 ruff S608 SQL 注入 critical（历史文件）；
-- 修复循环实战：自动修复 `zip()` 缺 strict、NaN 判定、`global` 反模式，重扫无回归。
-
-### 6.3 回归质量
-
-`selftest` 10 引擎全绿（schema/品牌隔离/脱敏断言）；人读报告引擎名检索零泄漏。
-
 ---
 
 ## 七、ROI 分析
