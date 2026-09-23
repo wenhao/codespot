@@ -165,6 +165,44 @@ mindmap
 
 **🤖 AI 语义审查（首创）**——`scan --engine ai` 生成审查计划（目标文件+schema+8 项语义审查重点），Agent 按计划审查静态规则抓不到的问题，结果带 confidence 经校验合并：**工具规则 + AI 语义双引擎**，直接补齐"仅 AI 扫描不全面"的短板。
 
+### 4.4 使用方式（摘自 README）
+
+**安装**（skill 载荷即 `skill/` 目录，一行软链即被 Agent 框架发现）：
+
+```bash
+ln -s <仓库>/skill ~/.agents/skills/codespot
+~/.agents/skills/codespot/scripts/codespot setup   # 引擎一次性安装（幂等、按需）
+```
+
+**日常使用**——两种等价方式：
+
+```bash
+# 方式一：自然语言（Agent 内置 skill 自动触发，推荐）
+"扫一下我刚生成的代码"  →  扫描 → 修复选项 → Agent 修复 → 重扫验证 → 汇总
+
+# 方式二：直接 CLI
+codespot scan --scope auto                 # 增量扫描（未提交→未推送→全量自动降级）
+codespot show --severity critical,major    # 浏览问题详情（CS 编号，无引擎名）
+cat .codespot/report.md                    # 人读报告；report.json 为 Agent 接口
+```
+
+**进阶能力**：
+
+```bash
+codespot scan --engine trufflehog   # 点名启用深度密钥检测（opt-in，默认不跑）
+codespot scan --engine ai           # AI 语义审查：计划 → Agent 分析 → ai-scan absorb
+codespot update-db                  # 下载 OSV 离线漏洞库（此后断网可用）
+codespot selftest                   # 10 引擎 × 夹具回归自检
+```
+
+**项目级规则配置**（`.codespot/config.json`，按检查类别、无需知晓引擎名）：
+
+```json
+{"rules": {"python_security": {"disabled": true}, "python_lint": {"ignore": ["RUF100"]}}}
+```
+
+另有原生配置文件优先（`.ruff.toml` / `.oxlintrc.json` / `.sqlfluff` / `.gitleaks.toml`）、severity 覆盖、误报白名单等治理能力，详见仓库 README（中英双语）。
+
 ---
 
 ## 五、开发过程与投入

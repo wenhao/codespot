@@ -128,6 +128,13 @@
   .concl b{font-size:16px}
   .concl p{margin:8px 0 0;font-size:13.5px;opacity:.92}
   .crit-tags span{display:inline-block;background:var(--red-bg);color:var(--red);border-radius:6px;padding:1px 8px;font-size:12px;margin:2px 4px 2px 0}
+
+  /* usage */
+  .code{background:#0d1117;color:#e6edf3;border-radius:10px;padding:13px 16px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;line-height:1.75;overflow-x:auto;margin:10px 0;white-space:pre}
+  .code .c{color:#7ee787}
+  .code .d{color:#79c0ff}
+  .code .o{color:#8b949e}
+  .usage-note{font-size:12.5px;color:var(--sub);margin-top:6px}
   footer{margin-top:60px;color:var(--sub);font-size:12px;text-align:center}
 </style>
 </head>
@@ -297,6 +304,27 @@
   <tr><td><b>回归自检</b></td><td><code>selftest</code> 10 引擎 × 9 夹具全绿（schema/品牌隔离/脱敏断言）</td></tr>
   <tr><td><b>CI 友好</b></td><td>发现不改变退出码，流水线可发布报告不打断构建</td></tr>
 </table>
+
+<h3>4.5 使用方式（摘自 README）</h3>
+<p><b>安装</b>——skill 载荷即 <code>skill/</code> 目录，一行软链即被 Agent 框架发现：</p>
+<div class="code">ln -s &lt;仓库&gt;/skill ~/.agents/skills/codespot
+~/.agents/skills/codespot/scripts/codespot <span class="d">setup</span>   <span class="c"># 引擎一次性安装（幂等、按需）</span></div>
+<p><b>日常使用</b>——两种等价方式：</p>
+<div class="code"><span class="c"># 方式一：自然语言（Agent 内置 skill 自动触发，推荐）</span>
+"扫一下我刚生成的代码"  →  扫描 → 修复选项 → Agent 修复 → 重扫验证 → 汇总
+
+<span class="c"># 方式二：直接 CLI</span>
+codespot <span class="d">scan --scope auto</span>                 <span class="c"># 增量扫描（未提交→未推送→全量自动降级）</span>
+codespot <span class="d">show --severity critical,major</span>    <span class="c"># 浏览问题详情（CS 编号，无引擎名）</span>
+<span class="o">cat .codespot/report.md                    # 人读报告；report.json 为 Agent 接口</span></div>
+<p><b>进阶能力</b>：</p>
+<div class="code">codespot <span class="d">scan --engine trufflehog</span>   <span class="c"># 点名启用深度密钥检测（opt-in，默认不跑）</span>
+codespot <span class="d">scan --engine ai</span>           <span class="c"># AI 语义审查：计划 → Agent 分析 → ai-scan absorb</span>
+codespot <span class="d">update-db</span>                  <span class="c"># 下载 OSV 离线漏洞库（此后断网可用）</span>
+codespot <span class="d">selftest</span>                   <span class="c"># 10 引擎 × 夹具回归自检</span></div>
+<p><b>项目级规则配置</b>（<code>.codespot/config.json</code>，按检查类别、无需知晓引擎名）：</p>
+<div class="code">{"rules": {"python_security": {"disabled": true}, "python_lint": {"ignore": ["RUF100"]}}}</div>
+<p class="usage-note">另有原生配置文件优先（.ruff.toml / .oxlintrc.json / .sqlfluff / .gitleaks.toml）、severity 覆盖、误报白名单等治理能力，详见仓库 README（中英双语）。</p>
 
 <!-- ============ 5 开发投入 ============ -->
 <h2><span class="no">5</span>开发过程与投入</h2>
