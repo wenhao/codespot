@@ -364,6 +364,9 @@ def _check_expectations(key, issues, expected, fixtures):
     missing_rules = want_rules - got_rules
     if missing_rules:
         problems.append("expected rules not reported: %s (got %s)" % (sorted(missing_rules), sorted(got_rules)))
+    min_count = exp.get("min_count")
+    if min_count is not None and len(issues) < min_count:
+        problems.append("expected >=%s issues, got %s" % (min_count, len(issues)))
     for bad in exp.get("forbidden_snippets", []):
         if any(bad in json.dumps(i) for i in issues):
             problems.append("forbidden raw snippet leaked: %s" % bad)

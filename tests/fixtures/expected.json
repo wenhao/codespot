@@ -5,7 +5,8 @@
     "sample_bad.js",
     "SampleBad.java",
     "sample_security.py",
-    "sample_bad.sql"
+    "sample_bad.sql",
+    "requirements.txt"
   ],
   "expectations": {
     "ruff": {
@@ -60,6 +61,11 @@
         "CV05"
       ],
       "forbidden_snippets": []
+    },
+    "osv-scanner": {
+      "rules": [],
+      "forbidden_snippets": [],
+      "min_count": 1
     }
   }
 }

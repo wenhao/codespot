@@ -243,6 +243,36 @@
       "checksum": null,
       "selftest_optional": true,
       "category": "semantic"
+    },
+    "osv-scanner": {
+      "name": "osv-scanner",
+      "adapter": "engine_deps.py",
+      "languages": [
+        "*"
+      ],
+      "always_on": true,
+      "required": false,
+      "runtime": "none",
+      "category": "dependencies",
+      "version": "2.6.0",
+      "download": {
+        "url": "https://github.com/google/osv-scanner/releases/download/v{version}/osv-scanner_{os}_{arch}{ext}",
+        "os_map": {
+          "darwin": "darwin",
+          "linux": "linux"
+        },
+        "arch_map": {
+          "arm64": "arm64",
+          "x86_64": "amd64"
+        },
+        "ext_map": {
+          "darwin": "",
+          "linux": ""
+        }
+      },
+      "raw_binary": true,
+      "checksum": null,
+      "selftest_optional": true
     }
   }
 }

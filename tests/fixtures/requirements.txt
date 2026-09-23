@@ -1,0 +1,3 @@
+# Fixture: intentionally vulnerable pins for codespot selftest (osv.dev lookup).
+requests==2.19.0
+flask==1.0

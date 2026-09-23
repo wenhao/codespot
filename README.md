@@ -36,6 +36,7 @@ Engines are downloaded into `~/.codespot/engines/` (version-locked); reports lan
 | Java bytecode + security (optional layer) | SpotBugs 4.10 + FindSecBugs 1.14 | mvn/gradle + JDK (skipped when project isn't buildable) |
 | SQL conventions | SQLFluff | python3 (venv-isolated) |
 | Cross-language semantic/taint (Go, C#, Kotlin, Ruby, PHP, Rust, Terraform…) | Semgrep CE 1.177 (fallback 1.136 on py3.9) | python3 (venv); first run fetches rules from the official registry |
+| Dependency vulnerabilities (supply chain) | OSV-Scanner 2.6 | — (queries osv.dev; needs network) |
 
 Severity can be tuned per project via `.codespot/severity-overrides.json` (per-rule and per-tool defaults); SQL dialect and a custom semgrep ruleset go in `.codespot/config.json` (`{"dialect": "postgres", "semgrep_config": "p/gosec"}`).
 

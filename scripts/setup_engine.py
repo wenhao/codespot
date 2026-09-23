@@ -118,6 +118,16 @@ def _setup_binary(spec, dest_dir):
 
     tmpd = tempfile.mkdtemp(prefix="codespot-dl-")
     try:
+        if spec.get("raw_binary"):
+            exe = os.path.join(dest_dir, name)
+            print("setup: downloading %s %s from %s" % (name, version, url))
+            _download(url, exe)
+            os.chmod(exe, os.stat(exe).st_mode | stat.S_IEXEC)
+            ok = _verify(exe, name, spec.get("version_flag", "--version"))
+            with open(os.path.join(dest_dir, ".ok"), "w") as f:
+                f.write(ok or "ok")
+            print("setup: %s %s installed (%s)" % (name, version, exe))
+            return exe
         archive = os.path.join(tmpd, "engine." + ext)
         print("setup: downloading %s %s from %s" % (name, version, url))
         _download(url, archive)
