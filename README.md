@@ -34,8 +34,11 @@ Engines are downloaded into `~/.codespot/engines/` (version-locked); reports lan
 | Java (source-level, no compile) | PMD 7.27 | JRE 8+ |
 | Java bytecode + security (optional layer) | SpotBugs 4.10 + FindSecBugs 1.14 | mvn/gradle + JDK (skipped when project isn't buildable) |
 | SQL conventions | SQLFluff | python3 (venv-isolated) |
+| Cross-language semantic/taint (Go, C#, Kotlin, Ruby, PHP, Rust, Terraform…) | Semgrep CE 1.177 (fallback 1.136 on py3.9) | python3 (venv); first run fetches rules from the official registry |
 
-Severity can be tuned per project via `.codespot/severity-overrides.json` (per-rule and per-tool defaults); SQL dialect goes in `.codespot/config.json` (`{"dialect": "postgres"}`).
+Severity can be tuned per project via `.codespot/severity-overrides.json` (per-rule and per-tool defaults); SQL dialect and a custom semgrep ruleset go in `.codespot/config.json` (`{"dialect": "postgres", "semgrep_config": "p/gosec"}`).
+
+**License boundary**: codespot is an internal tool. Semgrep CE and its registry rules are used under the Semgrep Rules License "internal business purposes" only — rules are fetched at runtime on the user's machine and are not bundled with or distributed by codespot. Do not sell or externally distribute codespot with this engine enabled.
 
 ## Documentation
 - [可行性调研报告](docs/feasibility-research.md) — 技术选型、引擎矩阵、路线对比、实现设计与并行迭代计划（2026-09-23，两轮调研）

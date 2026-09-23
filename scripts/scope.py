@@ -15,6 +15,11 @@ SUPPORTED_LANGS = {
     ".js": "js", ".jsx": "jsx", ".mjs": "js", ".cjs": "js",
     ".ts": "ts", ".mts": "ts", ".cts": "ts", ".tsx": "tsx",
     ".java": "java", ".sql": "sql",
+    ".go": "go", ".rb": "ruby", ".php": "php",
+    ".kt": "kotlin", ".kts": "kotlin", ".rs": "rust",
+    ".cs": "csharp", ".c": "c", ".h": "c", ".cpp": "cpp", ".cc": "cpp", ".hpp": "cpp",
+    ".tf": "terraform", ".yaml": "yaml", ".yml": "yaml",
+    ".swift": "swift", ".scala": "scala",
 }
 
 EXCLUDED_DIRS = (".git/", ".codespot/", "node_modules/", "vendor/", "dist/", "build/")

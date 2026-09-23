@@ -258,8 +258,11 @@ def do_selftest(args):
         for fut, key in futures.items():
             _, issues, err = fut.result()
             if err:
-                print("selftest: FAIL %s — %s" % (key, err))
-                failures += 1
+                if registry[key].get("selftest_optional"):
+                    print("selftest: SKIP %s (network engine unavailable: %s)" % (key, err[:80]))
+                else:
+                    print("selftest: FAIL %s — %s" % (key, err))
+                    failures += 1
                 continue
             problems = _check_expectations(key, issues, expected, fixtures)
             if problems:

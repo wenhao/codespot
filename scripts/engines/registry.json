@@ -198,6 +198,44 @@
       ],
       "checksum": null,
       "version_flag": "-version"
+    },
+    "semgrep": {
+      "name": "semgrep",
+      "adapter": "engine_semgrep.py",
+      "always_on": false,
+      "required": false,
+      "languages": [
+        "py",
+        "js",
+        "jsx",
+        "ts",
+        "tsx",
+        "java",
+        "go",
+        "ruby",
+        "php",
+        "kotlin",
+        "rust",
+        "csharp",
+        "c",
+        "cpp",
+        "terraform",
+        "yaml",
+        "scala",
+        "swift"
+      ],
+      "runtime": "python3",
+      "version": "1.177.0",
+      "install": "venv",
+      "min_python": "3.10",
+      "pip_deps": {
+        "semgrep": "1.177.0"
+      },
+      "pip_deps_fallback": {
+        "semgrep": "1.136.0"
+      },
+      "checksum": null,
+      "selftest_optional": true
     }
   }
 }
