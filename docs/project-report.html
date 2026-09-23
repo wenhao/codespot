@@ -89,34 +89,24 @@
   .bar-val{font-size:13px;font-weight:700}
   .cap{font-size:12px;color:var(--sub);margin-top:10px}
 
-  /* mindmap */
-  .mm{background:#fff;border:1px solid var(--line);border-radius:14px;padding:28px 22px;margin:16px 0}
-  .mm-grid{display:grid;grid-template-columns:1fr 170px 1fr;align-items:center}
-  .mm-root{grid-column:2;display:flex;align-items:center}
-  .mm-root .mline{flex:1;height:2px;background:#c7d1da}
-  .mm-root span{background:var(--ink);color:#fff;font-weight:800;border-radius:14px;padding:14px 16px;text-align:center;font-size:14px;line-height:1.4;box-shadow:0 2px 10px rgba(31,35,40,.28);position:relative;z-index:1}
-  .mm-col{display:flex;flex-direction:column;gap:14px;position:relative}
-  .mm-col.left{padding-right:26px}
-  .mm-col.right{padding-left:26px}
-  .mm-col.left:before,.mm-col.right:before{content:"";position:absolute;top:14px;bottom:14px;width:2px;background:#c7d1da}
-  .mm-col.left:before{right:0}
-  .mm-col.right:before{left:0}
-  .mm-branch{position:relative;background:#fff;border:1px solid var(--line);border-left:4px solid var(--c,var(--blue));border-radius:10px;padding:10px 14px;z-index:1}
-  .mm-col.left .mm-branch{border-left:none;border-right:4px solid var(--c,var(--blue))}
-  .mm-col.left .mm-branch:after,.mm-col.right .mm-branch:after{content:"";position:absolute;top:50%;width:26px;height:2px;background:#c7d1da}
-  .mm-col.left .mm-branch:after{right:-26px}
-  .mm-col.right .mm-branch:after{left:-26px}
-  .mm-branch b{font-size:13.5px;display:block;margin-bottom:4px;color:var(--c,var(--blue))}
-  .mm-branch ul{margin:0;padding-left:16px;font-size:12px;color:var(--sub)}
-  .mm-branch li{margin:2px 0}
+  /* mindmap (radial) */
+  .mm{background:linear-gradient(180deg,#fdfefe,#f6f9fb);border:1px solid var(--line);border-radius:14px;margin:16px 0;padding:12px}
+  .mmrad{position:relative;width:100%;aspect-ratio:1000/560;min-height:470px}
+  .mmrad svg{position:absolute;inset:0;width:100%;height:100%;z-index:0}
+  .mmnode{position:absolute;width:30%;transform:translateY(-50%);background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 14px;box-shadow:0 1px 6px rgba(31,35,40,.08);z-index:1}
+  .mmnode b{font-size:13.5px;display:flex;align-items:center;gap:7px;margin-bottom:4px;color:var(--c)}
+  .mmnode b:before{content:"";width:9px;height:9px;border-radius:50%;background:var(--c);flex:none}
+  .mmnode ul{margin:0;padding-left:16px;font-size:12px;color:var(--sub)}
+  .mmnode li{margin:2px 0}
+  .mmnode.left{border-right:4px solid var(--c)}
+  .mmnode.right{border-left:4px solid var(--c)}
+  .mmroot{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:var(--ink);color:#fff;font-weight:800;border-radius:18px;padding:18px 20px;text-align:center;font-size:15px;line-height:1.5;box-shadow:0 6px 18px rgba(31,35,40,.32);z-index:2}
+  .mmroot small{display:block;font-weight:400;font-size:11px;opacity:.75;letter-spacing:2px}
+  .mmlist{display:none;flex-direction:column;gap:10px;padding:4px 2px}
   @media(max-width:760px){
-    .mm-grid{grid-template-columns:1fr}
-    .mm-root{grid-row:1;margin-bottom:16px}
-    .mm-root .mline{display:none}
-    .mm-col{padding:0 !important;gap:10px}
-    .mm-col:before,.mm-col.right .mm-branch:after{display:none}
-    .mm-col.left .mm-branch{border-right:none;border-left:4px solid var(--c,var(--blue))}
-    .mm-col.left .mm-branch:after{display:none}
+    .mmrad{display:none}
+    .mmlist{display:flex}
+    .mmlist .mmnode{position:static;width:auto;transform:none;border-left:4px solid var(--c);border-right:none}
   }
 
   /* feature cards */
@@ -249,18 +239,30 @@
 
 <h3>4.2 功能全景</h3>
 <div class="mm">
-  <div class="mm-grid">
-    <div class="mm-col left">
-      <div class="mm-branch" style="--c:#0969da"><b>⚡ 增量扫描</b><ul><li>未提交 / 未推送 / 全量 自动降级</li><li>秒级~分钟级反馈</li></ul></div>
-      <div class="mm-branch" style="--c:#8250df"><b>📦 依赖漏洞 SCA</b><ul><li>OSV 实时库 + 离线数据库</li><li>附升级目标版本</li></ul></div>
-      <div class="mm-branch" style="--c:#1a7f37"><b>🏛 治理与品牌</b><ul><li>CS 稳定编号</li><li>三层规则配置</li><li>selftest 回归</li></ul></div>
-    </div>
-    <div class="mm-root"><div class="mline"></div><span>codespot<br>核心能力</span><div class="mline"></div></div>
-    <div class="mm-col right">
-      <div class="mm-branch" style="--c:#cf222e"><b>🛡 安全检测</b><ul><li>密钥 222 规则常开 + 报告脱敏</li><li>TruffleHog 800+ 深度层（可选）</li><li>SQL 注入 / XXE / SSRF，CWE 标注</li><li>AI 语义审查（agent 驱动）</li></ul></div>
-      <div class="mm-branch" style="--c:#bc4c00"><b>↺ AI 修复闭环</b><ul><li>严重级选项 → 修复 → 重扫验证</li><li>误报白名单</li></ul></div>
-      <div class="mm-branch" style="--c:#57606a"><b>🧰 工程友好</b><ul><li>零依赖 · 零服务器</li><li>离线可用</li><li>退出码适配 CI</li></ul></div>
-    </div>
+  <div class="mmrad">
+    <svg viewBox="0 0 1000 560" preserveAspectRatio="none" aria-hidden="true">
+      <path d="M500,280 C445,280 405,95 330,95"  stroke="#0969da" stroke-width="3.5" fill="none" stroke-linecap="round" opacity=".85"/>
+      <path d="M500,280 C450,280 400,280 330,280" stroke="#8250df" stroke-width="3.5" fill="none" stroke-linecap="round" opacity=".85"/>
+      <path d="M500,280 C445,280 405,465 330,465" stroke="#1a7f37" stroke-width="3.5" fill="none" stroke-linecap="round" opacity=".85"/>
+      <path d="M500,280 C555,280 595,95 670,95"  stroke="#cf222e" stroke-width="3.5" fill="none" stroke-linecap="round" opacity=".85"/>
+      <path d="M500,280 C550,280 600,280 670,280" stroke="#bc4c00" stroke-width="3.5" fill="none" stroke-linecap="round" opacity=".85"/>
+      <path d="M500,280 C555,280 595,465 670,465" stroke="#57606a" stroke-width="3.5" fill="none" stroke-linecap="round" opacity=".85"/>
+    </svg>
+    <div class="mmroot">codespot<br>核心能力<small>10 ENGINES</small></div>
+    <div class="mmnode left"  style="--c:#0969da;left:3%;top:17%"><b>⚡ 增量扫描</b><ul><li>未提交 / 未推送 / 全量 自动降级</li><li>秒级~分钟级反馈</li></ul></div>
+    <div class="mmnode left"  style="--c:#8250df;left:3%;top:50%"><b>📦 依赖漏洞 SCA</b><ul><li>OSV 实时库 + 离线数据库</li><li>附升级目标版本</li></ul></div>
+    <div class="mmnode left"  style="--c:#1a7f37;left:3%;top:83%"><b>🏛 治理与品牌</b><ul><li>CS 稳定编号</li><li>三层规则配置</li><li>selftest 回归</li></ul></div>
+    <div class="mmnode right" style="--c:#cf222e;left:67%;top:17%"><b>🛡 安全检测</b><ul><li>密钥 222 规则常开 + 报告脱敏</li><li>TruffleHog 800+ 深度层（可选）</li><li>SQL 注入 / XXE / SSRF，CWE 标注</li><li>AI 语义审查（agent 驱动）</li></ul></div>
+    <div class="mmnode right" style="--c:#bc4c00;left:67%;top:50%"><b>↺ AI 修复闭环</b><ul><li>严重级选项 → 修复 → 重扫验证</li><li>误报白名单</li></ul></div>
+    <div class="mmnode right" style="--c:#57606a;left:67%;top:83%"><b>🧰 工程友好</b><ul><li>零依赖 · 零服务器</li><li>离线可用</li><li>退出码适配 CI</li></ul></div>
+  </div>
+  <div class="mmlist">
+    <div class="mmnode" style="--c:#cf222e"><b>🛡 安全检测</b><ul><li>密钥 222 规则常开 + 报告脱敏</li><li>TruffleHog 800+ 深度层（可选）</li><li>SQL 注入 / XXE / SSRF，CWE 标注</li><li>AI 语义审查（agent 驱动）</li></ul></div>
+    <div class="mmnode" style="--c:#0969da"><b>⚡ 增量扫描</b><ul><li>未提交 / 未推送 / 全量 自动降级</li><li>秒级~分钟级反馈</li></ul></div>
+    <div class="mmnode" style="--c:#8250df"><b>📦 依赖漏洞 SCA</b><ul><li>OSV 实时库 + 离线数据库</li><li>附升级目标版本</li></ul></div>
+    <div class="mmnode" style="--c:#bc4c00"><b>↺ AI 修复闭环</b><ul><li>严重级选项 → 修复 → 重扫验证</li><li>误报白名单</li></ul></div>
+    <div class="mmnode" style="--c:#1a7f37"><b>🏛 治理与品牌</b><ul><li>CS 稳定编号</li><li>三层规则配置</li><li>selftest 回归</li></ul></div>
+    <div class="mmnode" style="--c:#57606a"><b>🧰 工程友好</b><ul><li>零依赖 · 零服务器</li><li>离线可用</li><li>退出码适配 CI</li></ul></div>
   </div>
 </div>
 
