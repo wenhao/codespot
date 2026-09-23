@@ -94,15 +94,17 @@ def merge_issues(per_engine):
             if issue.get("rule") in rule_ignores:
                 continue
             all_issues.append(issue)
-    # csId collision handling within one scan (spec: suffix -2, -3 …)
+    # csId identifies a RULE (tool|rule), so repeated occurrences share one id.
+    # Suffix only when two DIFFERENT tool|rule pairs hash-collide (rare).
     seen = {}
     for issue in all_issues:
         cid = issue["csId"]
-        if cid in seen:
-            seen[cid] += 1
-            issue["csId"] = "%s-%d" % (cid, seen[cid])
+        sig = (issue["tool"], issue["rule"])
+        if cid in seen and seen[cid] != sig:
+            seen[cid + "#n"] = seen.get(cid + "#n", 1) + 1
+            issue["csId"] = "%s-%d" % (cid, seen[cid + "#n"])
         else:
-            seen[cid] = 1
+            seen[cid] = sig
     all_issues.sort(key=lambda i: (SEV_ORDER.get(i.get("severity"), 9), i.get("file", ""), i.get("line", 0)))
     return all_issues
 
