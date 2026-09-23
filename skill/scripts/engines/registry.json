@@ -302,6 +302,22 @@
         }
       },
       "checksum": null
+    },
+    "ai": {
+      "name": "ai",
+      "adapter": "engine_ai.py",
+      "languages": [
+        "*"
+      ],
+      "always_on": false,
+      "opt_in": true,
+      "agent_driven": true,
+      "required": false,
+      "runtime": "agent",
+      "category": "ai_review",
+      "version": "1",
+      "install": null,
+      "checksum": null
     }
   }
 }

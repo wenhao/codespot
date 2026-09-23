@@ -68,6 +68,7 @@ cat .codespot/report.json   # AI agent 用：内部字段（tool/rule/ruleUrl）
 | `semantic` | Semgrep CE 1.177（py3.9 回退 1.136） | python3（独立 venv） | Go/C#/Kotlin/Ruby/PHP/Rust/Terraform…；规则从官方 registry 拉取 |
 | `dependencies` | OSV-Scanner 2.6 | —（查询 osv.dev） | 扫描 requirements/锁文件/pom/go.mod 的已知 CVE |
 | `secrets_deep`（**opt-in**） | TruffleHog 3.97 | — | 800+ 检测器；默认 `--no-verification`（纯本地）；仅 `--engine trufflehog` 或 `rules.secrets_deep.enabled` 时运行 |
+| `ai_review`（**opt-in**，agent 驱动） | AI agent 本身 | — | 语义级审查（逻辑/并发/错误处理缺口）；`scan --engine ai` → 按 `.codespot/ai-plan.json` 分析 → `codespot ai-scan absorb`；发现为建议性并附 confidence |
 
 ## 各语言规则数量与去重
 

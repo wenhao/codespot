@@ -5,7 +5,7 @@ description: Local static code scanning for AI-generated code. Use whenever the 
 
 # codespot
 
-本地多引擎静态扫描 + AI 修复循环。对 git 范围内（未提交 / 未推送 / 全量）的代码运行 gitleaks（密钥）、ruff（Python 质量）、bandit（Python 安全）、oxlint + ESLint/sonarjs（JS/TS）、PMD + SpotBugs/FindSecBugs（Java，后者需项目可编译）、SQLFluff（SQL）、Semgrep CE（跨语言语义/taint：Go、C#、Kotlin、Ruby、PHP、Rust、Terraform 等；规则从官方 registry 运行时拉取，首次扫描需联网）、OSV-Scanner（依赖漏洞/供应链：查 requirements、package-lock、pom.xml、go.mod 等清单里的已知 CVE，需联网）、TruffleHog（可选深度密钥检测，800+ 检测器，仅在用户 `--engine trufflehog` 显式指定时运行），产出 AI 可读的 `.codespot/report.json` 与人读的 `report.md`。
+本地多引擎静态扫描 + AI 修复循环。对 git 范围内（未提交 / 未推送 / 全量）的代码运行 gitleaks（密钥）、ruff（Python 质量）、bandit（Python 安全）、oxlint + ESLint/sonarjs（JS/TS）、PMD + SpotBugs/FindSecBugs（Java，后者需项目可编译）、SQLFluff（SQL）、Semgrep CE（跨语言语义/taint：Go、C#、Kotlin、Ruby、PHP、Rust、Terraform 等；规则从官方 registry 运行时拉取，首次扫描需联网）、OSV-Scanner（依赖漏洞/供应链：查 requirements、package-lock、pom.xml、go.mod 等清单里的已知 CVE，需联网）、TruffleHog（可选深度密钥检测，800+ 检测器，仅在用户 `--engine trufflehog` 显式指定时运行）、AI 深度审查（可选，`--engine ai` 由你按计划执行语义级审查），产出 AI 可读的 `.codespot/report.json` 与人读的 `report.md`。
 
 ## 工作流
 
@@ -40,6 +40,14 @@ description: Local static code scanning for AI-generated code. Use whenever the 
 - **对用户呈现时只说 codespot**：问题编号一律用 `CS-xxxxx`（report.md / `codespot show` 输出的编号），不要向用户提及任何底层开源工具名。
 - `report.json` 是给 agent 的内部接口，保留原始字段（tool/rule/ruleUrl）供你修复时使用——内部决策可用，转述给用户时必须 codespot 化。
 - 规则删减/调参：引导用户写 `.codespot/config.json`（`rules` 段按检查类别：python_lint / python_security / js_lint / java / sql / secrets / semantic，支持 `disabled` 与 `ignore`）；高级用户可直接放原生配置文件（`.ruff.toml`、`.oxlintrc.json`、`.sqlfluff` 等），原生优先。
+
+## AI 深度审查（可选，agent 驱动）
+
+用户说"用 AI 再查一遍 / 深度审查这段代码"时，执行三步工作流：
+
+1. **生成计划**：`codespot scan --engine ai`（同 scope）——产出 `.codespot/ai-plan.json`（目标文件、输出 schema、审查重点、超限分批指引）。
+2. **分析**：读 plan → 逐文件阅读代码，聚焦**静态工具抓不到的语义问题**（逻辑错误、并发竞态、错误处理缺口、资源泄漏、跨文件不一致），不要重复规则类发现；每条给精确 file:line 与依据，按 schema 写 `.codespot/ai-result.json`（confidence 必填，无发现写 `[]`）。
+3. **合并**：`codespot ai-scan absorb` → 呈现合并报告。AI 发现标注为**建议性**（advisory）并附 confidence；修复建议同样先判断合理性。
 
 ## 规则与边界
 

@@ -67,6 +67,7 @@ Engines are downloaded into `~/.codespot/engines/` (version-locked); reports lan
 | `semantic` | Semgrep CE 1.177 (fallback 1.136 on py3.9) | python3 (venv) | Go/C#/Kotlin/Ruby/PHP/Rust/Terraform…; rules fetched from official registry |
 | `dependencies` | OSV-Scanner 2.6 | — (queries osv.dev) | scans requirements/lockfiles/pom/go.mod for known CVEs |
 | `secrets_deep` (**opt-in**) | TruffleHog 3.97 | — | 800+ detectors; `--no-verification` by default (fully local); runs only via `--engine trufflehog` or `rules.secrets_deep.enabled` |
+| `ai_review` (**opt-in**, agent-driven) | the AI agent itself | — | semantic review (logic/concurrency/error-handling gaps); `scan --engine ai` → analyze per `.codespot/ai-plan.json` → `codespot ai-scan absorb`; findings are advisory with confidence |
 
 ### Rules per language — counts & de-duplication
 

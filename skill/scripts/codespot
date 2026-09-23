@@ -71,8 +71,8 @@ def select_engines(entries, requested=None):
 
 
 def run_adapter(key, spec, root, list_path, out_path):
-    exe = setup_engine.engine_binary(key, spec["version"])
-    if not exe:
+    exe = None if spec.get("agent_driven") else setup_engine.engine_binary(key, spec["version"])
+    if exe is None and not spec.get("agent_driven"):
         return key, None, "engine not installed (run: codespot setup)"
     script = os.path.join(HERE, "engines", spec["adapter"])
     env = dict(os.environ, CODESPOT_WORKDIR=root)
@@ -187,7 +187,7 @@ def do_scan(args):
     for key, spec in chosen:
         if spec.get("internal"):
             continue
-        if not setup_engine.engine_binary(key, spec["version"]):
+        if not spec.get("agent_driven") and not setup_engine.engine_binary(key, spec["version"]):
             print("scan: %s not installed, running setup first..." % key)
             try:
                 setup_engine.setup_engine(spec)
@@ -332,6 +332,87 @@ def do_update_db(args):
     return 0
 
 
+def do_ai_scan(args):
+    """absorb: validate agent-written .codespot/ai-result.json and merge into the last report."""
+    root = repo_root(args)
+    result_path = os.path.join(root, CODESPOT_DIR, "ai-result.json")
+    report_path = os.path.join(root, CODESPOT_DIR, REPORT_JSON)
+    if not os.path.isfile(result_path):
+        sys.stderr.write("codespot ai-scan: %s not found (agent must analyze per ai-plan.json first)\n" % result_path)
+        return 2
+    if not os.path.isfile(report_path):
+        sys.stderr.write("codespot ai-scan: no prior report — run codespot scan --engine ai first\n")
+        return 2
+    try:
+        with open(result_path, "r", encoding="utf-8") as f:
+            raw = json.load(f)
+    except ValueError as e:
+        sys.stderr.write("codespot ai-scan: ai-result.json is not valid JSON: %s\n" % e)
+        return 2
+    if not isinstance(raw, list):
+        sys.stderr.write("codespot ai-scan: ai-result.json must be a JSON array\n")
+        return 2
+
+    from common import make_issue, SEVERITIES
+    accepted, rejected = [], []
+    for idx, item in enumerate(raw):
+        why = None
+        if not isinstance(item, dict):
+            why = "not an object"
+        else:
+            rule = str(item.get("rule", "")).strip()
+            if not rule:
+                why = "missing rule"
+            sev = str(item.get("severity", "major")).lower()
+            if sev not in SEVERITIES:
+                why = "bad severity '%s'" % item.get("severity")
+            fp = item.get("file", "")
+            abs_fp = fp if os.path.isabs(fp) else os.path.join(root, fp)
+            if not fp or not os.path.isfile(abs_fp):
+                why = "file not found: %s" % fp
+            else:
+                try:
+                    with open(abs_fp, "r", encoding="utf-8", errors="replace") as f:
+                        nlines = sum(1 for _ in f)
+                except OSError:
+                    nlines = 0
+                line = item.get("line", 0)
+                if not isinstance(line, int) or line < 1 or line > max(nlines, 1):
+                    why = "line %s out of range (file has %d lines)" % (line, nlines)
+            if not why and not str(item.get("message", "")).strip():
+                why = "missing message"
+        if why:
+            rejected.append((idx, why))
+            sys.stderr.write("codespot ai-scan: rejected item #%d — %s\n" % (idx, why))
+            continue
+        if not rule.startswith("AI-"):
+            rule = "AI-" + rule
+        issue = make_issue(tool="ai", language="*", rule=rule, rule_url="",
+                           severity=str(item.get("severity", "major")).lower(),
+                           file=str(item.get("file", "")), line=int(item.get("line", 1)),
+                           column=int(item.get("column", 1) or 1),
+                           message=str(item.get("message", "")),
+                           snippet=str(item.get("snippet", ""))[:160])
+        conf = str(item.get("confidence", "")).lower()
+        if conf in ("high", "medium", "low"):
+            issue["confidence"] = conf
+        accepted.append(issue)
+
+    with open(report_path, "r", encoding="utf-8") as f:
+        payload = json.load(f)
+    payload["issues"] = [i for i in payload.get("issues", []) if i.get("tool") != "ai"] + accepted
+    payload["issues"].sort(key=lambda i: (SEV_ORDER.get(i.get("severity"), 9), i.get("file", ""), i.get("line", 0)))
+    payload["summary"] = {k: sum(1 for i in payload["issues"] if i["severity"] == k)
+                          for k in SEV_ORDER}
+    payload["summary"]["total"] = len(payload["issues"])
+    _write_reports(root, payload)
+    print("ai-scan: absorbed %d finding(s)%s — reports updated"
+          % (len(accepted), ", %d rejected" % len(rejected) if rejected else ""))
+    if not accepted and rejected:
+        return 2
+    return 0
+
+
 def do_selftest(args):
     fixtures = os.path.join(os.path.dirname(HERE), "tests", "fixtures")
     if not os.path.isdir(fixtures):
@@ -457,6 +538,10 @@ def main():
 
     sp = sub.add_parser("update-db", help="download/refresh the local OSV vulnerability DB (enables offline dependency scans)")
     sp.set_defaults(fn=do_update_db)
+
+    sp = sub.add_parser("ai-scan", help="absorb agent-written AI review results into the last report")
+    sp.add_argument("mode", nargs="?", default="absorb", choices=["absorb"])
+    sp.set_defaults(fn=do_ai_scan)
 
     sp = sub.add_parser("selftest", help="run fixture-based regression across engines")
     sp.set_defaults(fn=do_selftest)
