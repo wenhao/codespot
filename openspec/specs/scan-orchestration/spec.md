@@ -34,17 +34,27 @@
 
 ### Requirement: setup 幂等安装
 
-setup SHALL 支持两种安装形态：平台二进制（tar.gz，M0 已有）与 npm 项目（在 `~/.codespot/engines/<name>-<version>/` 内 `npm install` 锁定版本）；单引擎安装失败 MUST 中止该引擎并继续其余引擎（逐引擎降级），最终以非零码提示存在失败项；scan 时将"未安装且被需要"的引擎记为 engine_error。
+setup SHALL 支持第四种安装形态 `raw_binary`：直接下载单文件二进制（URL 直链 release 资产，按 os/arch 映射）到 `~/.codespot/engines/<name>-<version>/<name>` 并加执行位；幂等与失败清理语义不变。
+
+#### Scenario: 直链二进制安装
+
+- **WHEN** 执行 `codespot setup osv-scanner`
+- **THEN** 二进制从 release 直链下载、`--version` 校验通过；重复执行跳过
 
 #### Scenario: 一个引擎失败不影响其余安装
 
-- **WHEN** npm 引擎安装失败（npm 缺失）但平台二进制引擎正常
-- **THEN** setup 对二进制引擎安装成功，对失败引擎打印原因并继续，整体退出码非零
+- **WHEN** osv-scanner 安装失败但平台二进制引擎正常
+- **THEN** setup 对其余引擎安装成功，对失败引擎打印原因并继续，整体退出码非零
 
 #### Scenario: 重复 setup
 
-- **WHEN** 连续执行两次 `codespot setup`（混合形态引擎）
-- **THEN** 第二次的下载与 npm install 全部跳过，退出码 0
+- **WHEN** 连续执行两次 `codespot setup`
+- **THEN** 第二次的下载步骤全部跳过，退出码 0
+
+#### Scenario: 重复 setup 幂等
+
+- **WHEN** 连续执行两次 `codespot setup`
+- **THEN** 第二次全部跳过，退出码 0
 
 #### Scenario: 网络失败不落半成品
 
