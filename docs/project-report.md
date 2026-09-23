@@ -264,3 +264,5 @@ codespot selftest                   # 10 引擎 × 夹具回归自检
 - AI 语义审查发现为建议性（附 confidence），最终由人决策。
 
 > 附：仓库内含《可行性调研报告》《验证报告（HTML）》《中英文 README》与全部 OpenSpec 规格归档，可供审计复盘。
+
+**项目仓库**：<https://github.com/wenhao/codespot.git>
