@@ -41,7 +41,7 @@ Engines are downloaded into `~/.codespot/engines/` (version-locked); reports lan
 |---|---|
 | `codespot setup [engines…]` | Install engines (idempotent, version-locked; per-engine failures don't block others) |
 | `codespot scope --scope <tier>` | Print the file list a scan would use |
-| `codespot scan --scope <tier>` | Run all matching engines, write both reports |
+| `codespot scan --scope <tier> [--engine name…]` | Run all matching engines (plus any explicitly requested opt-in engines), write both reports |
 | `codespot show [--severity s1,s2] [--file prefix] [--rule CS-xxxxx] [--limit N] [--all]` | Browse issue details from the last report |
 | `codespot report` | Print the last report.json |
 | `codespot selftest` | Fixture-based regression across all engines |
@@ -79,7 +79,7 @@ Rule counts below are what codespot actually enables (verified against the insta
 | Java | PMD: **213 enabled** (226 category rules − 13 excluded; errorprone/bestpractices/security/design/multithreading) | SpotBugs **~470 bug patterns** + FindSecBugs **144 security detectors** (CWE-tagged, bytecode-level, needs buildable project) | OSV-Scanner (pom.xml) |
 | SQL | SQLFluff: **~48 enabled** (of 68; layout/capitalisation groups dropped) | — | — |
 | Go / C# / Kotlin / Ruby / PHP / Rust / Swift / Scala | oxlint/ESLint where applicable | Semgrep `auto` packs (**2800+** registry rules) | OSV-Scanner (go.mod/Cargo/composer/Gemfile/*.csproj) |
-| Secrets (any language) | — | gitleaks: **222 rules** (vendor keys, private keys, entropy heuristics) | — |
+| Secrets (any language) | — | gitleaks: **222 rules** (vendor keys, private keys, entropy heuristics); TruffleHog deep layer (opt-in): **800+ detectors** | — |
 
 **De-duplication between tools** (by design, verified in the express/jsoup validation scans):
 

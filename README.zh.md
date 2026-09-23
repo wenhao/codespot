@@ -41,11 +41,13 @@ cat .codespot/report.json   # AI agent 用：内部字段（tool/rule/ruleUrl）
 |---|---|
 | `codespot setup [引擎…]` | 安装引擎（幂等、版本锁定；单个失败不阻塞其他） |
 | `codespot scope --scope <档位>` | 打印扫描将使用的文件清单 |
-| `codespot scan --scope <档位>` | 运行所有匹配引擎，写出双报告 |
+| `codespot scan --scope <档位> [--engine 名称…]` | 运行所有匹配引擎（含显式点名的 opt-in 引擎），写出双报告 |
 | `codespot show [--severity 级别] [--file 前缀] [--rule CS-编号] [--limit N] [--all]` | 浏览最近一次报告的问题详情 |
 | `codespot report` | 打印最近一次 report.json |
 | `codespot update-db` | 下载/刷新本地 OSV 漏洞库（启用离线依赖扫描） |
 | `codespot selftest` | 夹具驱动的全引擎回归自检 |
+
+**opt-in 引擎**：registry 中标记 `opt_in` 的引擎（当前为 TruffleHog）默认绝不运行——用可重复的 `--engine <名称>` 显式点名，或通过 `.codespot/config.json` 永久启用：`{"rules": {"secrets_deep": {"enabled": true}}}`。
 
 **扫描范围**（`--scope`）：`auto`（默认：未提交 → 未推送 → 全量取第一个非空）、`uncommitted`（含未跟踪文件）、`unpushed`（无上游分支时回退与 `main` 比较）、`ref:<ref>`、`all`。
 
@@ -65,6 +67,7 @@ cat .codespot/report.json   # AI agent 用：内部字段（tool/rule/ruleUrl）
 | `sql` | SQLFluff | python3（独立 venv） | 方言自动探测链 |
 | `semantic` | Semgrep CE 1.177（py3.9 回退 1.136） | python3（独立 venv） | Go/C#/Kotlin/Ruby/PHP/Rust/Terraform…；规则从官方 registry 拉取 |
 | `dependencies` | OSV-Scanner 2.6 | —（查询 osv.dev） | 扫描 requirements/锁文件/pom/go.mod 的已知 CVE |
+| `secrets_deep`（**opt-in**） | TruffleHog 3.97 | — | 800+ 检测器；默认 `--no-verification`（纯本地）；仅 `--engine trufflehog` 或 `rules.secrets_deep.enabled` 时运行 |
 
 ## 各语言规则数量与去重
 
@@ -77,7 +80,7 @@ cat .codespot/report.json   # AI agent 用：内部字段（tool/rule/ruleUrl）
 | Java | PMD：**启用 213 条**（226 条类别规则 − 13 条排除；errorprone/bestpractices/security/design/multithreading） | SpotBugs **约 470 个 bug 模式** + FindSecBugs **144 个安全检测器**（带 CWE，字节码级，需可编译） | OSV-Scanner（pom.xml） |
 | SQL | SQLFluff：**启用约 48 条**（共 68；剔除 layout/capitalisation 排版组） | — | — |
 | Go / C# / Kotlin / Ruby / PHP / Rust / Swift / Scala | 适用处由 oxlint/ESLint 覆盖 | Semgrep `auto` 规则包（**2800+** 条 registry 规则） | OSV-Scanner（go.mod/Cargo/composer/Gemfile/*.csproj） |
-| 密钥（任意语言） | — | gitleaks：**222 条规则**（厂商密钥/私钥/熵值启发式） | — |
+| 密钥（任意语言） | — | gitleaks：**222 条规则**（厂商密钥/私钥/熵值启发式）；TruffleHog 深度层（opt-in）：**800+ 检测器** | — |
 
 **工具间去重**（有意设计，已在 express/jsoup 验证扫描中实测）：
 
@@ -219,7 +222,7 @@ codespot 主体为纯 Python 标准库实现，**大部分能力天然跨平台*
 
 ## 许可边界
 
-codespot 是内部工具。Semgrep CE 及其 registry 规则按 Semgrep Rules License 的 "internal business purposes"（仅限内部业务使用）条款使用——规则在用户机器上运行时拉取，不随 codespot 打包或分发。**请勿在启用该引擎的状态下对外销售或分发 codespot。**
+codespot 是内部工具。TruffleHog（AGPL-3.0）与 Semgrep CE 及其 registry 规则按 Semgrep Rules License 的 "internal business purposes"（仅限内部业务使用）条款使用——规则在用户机器上运行时拉取，不随 codespot 打包或分发。**请勿在启用该引擎的状态下对外销售或分发 codespot。**
 
 ## 文档
 - [可行性调研报告](docs/feasibility-research.md) — 技术选型、引擎矩阵、路线对比、实现设计与并行迭代计划（2026-09-23，两轮调研）
