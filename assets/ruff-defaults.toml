@@ -14,10 +14,13 @@ select = [
 ]
 ignore = [
   "E501",  # line too long — formatting concern
+  "RUF001", "RUF002", "RUF003",  # ambiguous unicode (full-width punctuation) — noise in Chinese codebases
   "PLR0913", "PLR0912", "PLR0915", "PLR2004", # complexity/style thresholds
   "PLR0402", "PLR1711", # style
   "S104",  # binding to all interfaces — often intentional locally
 ]
 
 [lint.per-file-ignores]
-"tests/**" = ["S101"]  # asserts are fine in tests
+"**/tests/**" = ["S101"]  # asserts are fine in tests (absolute paths must match too)
+"**/test_*.py" = ["S101"]
+"**/conftest.py" = ["S101"]
