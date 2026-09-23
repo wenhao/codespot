@@ -22,6 +22,16 @@ scripts/codespot selftest
 
 Engines are downloaded into `~/.codespot/engines/` (version-locked); reports land in the target repo's `.codespot/` (add it to your `.gitignore`).
 
+## Engine matrix (M0 + M1)
+
+| Dimension | Engine | Requires |
+|---|---|---|
+| Secrets (always on) | gitleaks 8.30 | — |
+| Python quality | ruff 0.16 | — |
+| JS/TS fast layer | oxlint 1.85 | — |
+| JS/TS deep layer | ESLint + eslint-plugin-sonarjs | node/npm (graceful fallback to fast layer) |
+| Java (source-level, no compile) | PMD 7.27 | JRE 8+ |
+
 ## Documentation
 - [可行性调研报告](docs/feasibility-research.md) — 技术选型、引擎矩阵、路线对比、实现设计与并行迭代计划（2026-09-23，两轮调研）
 - 实施按 OpenSpec 变更分批推进：`openspec/changes/`（当前：`add-scan-base-with-secrets-and-python`，M0 基座 + gitleaks + ruff）

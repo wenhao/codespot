@@ -1,5 +1,5 @@
 {
-  "files": ["sample_bad.py", "sample_secrets.py"],
+  "files": ["sample_bad.py", "sample_secrets.py", "sample_bad.js", "SampleBad.java"],
   "expectations": {
     "ruff": {
       "rules": ["S105", "S307", "PLC0415", "S310"],
@@ -8,6 +8,18 @@
     "gitleaks": {
       "rules": ["aws-access-token"],
       "forbidden_snippets": ["AKIAABCDEFGHIJKLMNOP"]
+    },
+    "oxlint": {
+      "rules": ["eslint(no-unused-vars)"],
+      "forbidden_snippets": []
+    },
+    "eslint-sonarjs": {
+      "rules": ["sonarjs/pseudo-random", "sonarjs/no-dead-store"],
+      "forbidden_snippets": []
+    },
+    "pmd": {
+      "rules": ["EmptyCatchBlock", "CompareObjectsWithEquals"],
+      "forbidden_snippets": []
     }
   }
 }

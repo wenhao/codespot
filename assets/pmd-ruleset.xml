@@ -1,0 +1,32 @@
+<?xml version="1.0"?>
+<!-- codespot PMD ruleset: quality subset of the official quickstart —
+     priority 1-3 (bug / security / clarity), no pure style. -->
+<ruleset name="codespot-java"
+         xmlns="http://pmd.sourceforge.net/ruleset/2.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://pmd.sourceforge.net/ruleset/2.0.0 https://pmd.sourceforge.io/ruleset_2_0_0.xsd">
+  <description>codespot Java quality rules</description>
+
+  <rule ref="category/java/errorprone.xml">
+    <exclude name="MissingSerialVersionUID"/>
+  </rule>
+  <rule ref="category/java/multithreading.xml">
+    <exclude name="UseConcurrentHashMap"/>
+  </rule>
+  <rule ref="category/java/bestpractices.xml">
+    <exclude name="GuardLogStatement"/>
+    <exclude name="ForLoopCanBeForeach"/>
+  </rule>
+  <rule ref="category/java/security.xml"/>
+  <rule ref="category/java/design.xml">
+    <exclude name="TooManyMethods"/>
+    <exclude name="TooManyFields"/>
+    <exclude name="ExcessiveImports"/>
+    <exclude name="CouplingBetweenObjects"/>
+    <exclude name="LawOfDemeter"/>
+    <exclude name="GodClass"/>
+    <exclude name="ExcessiveClassLength"/>
+    <exclude name="ExcessiveParameterList"/>
+    <exclude name="ExcessivePublicCount"/>
+  </rule>
+</ruleset>

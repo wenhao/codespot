@@ -1,11 +1,12 @@
 {
-  "version": 1,
+  "version": 2,
   "engines": {
     "gitleaks": {
       "name": "gitleaks",
       "adapter": "engine_secrets.py",
       "languages": ["*"],
       "always_on": true,
+      "required": true,
       "runtime": "none",
       "version": "8.30.1",
       "download": {
@@ -21,6 +22,7 @@
       "adapter": "engine_py.py",
       "languages": ["py"],
       "always_on": false,
+      "required": false,
       "runtime": "none",
       "version": "0.16.8",
       "download": {
@@ -28,6 +30,59 @@
         "os_map": { "darwin": "apple-darwin", "linux": "unknown-linux-gnu" },
         "arch_map": { "arm64": "aarch64", "x86_64": "x86_64" },
         "ext_map": { "darwin": "tar.gz", "linux": "tar.gz" }
+      },
+      "checksum": null
+    },
+    "oxlint": {
+      "name": "oxlint",
+      "adapter": "engine_js.py",
+      "languages": ["js", "jsx", "ts", "tsx"],
+      "always_on": false,
+      "required": false,
+      "runtime": "none",
+      "version": "1.85.0",
+      "download": {
+        "url": "https://github.com/oxc-project/oxc/releases/download/oxlint_v{version}/oxlint-{arch}-{os}.{ext}",
+        "os_map": { "darwin": "apple-darwin", "linux": "unknown-linux-gnu" },
+        "arch_map": { "arm64": "aarch64", "x86_64": "x86_64" },
+        "ext_map": { "darwin": "tar.gz", "linux": "tar.gz" }
+      },
+      "layout": { "archive_binary": "oxlint-{arch}-{os}" },
+      "checksum": null
+    },
+    "eslint-layer": {
+      "name": "eslint-layer",
+      "adapter": null,
+      "internal": true,
+      "languages": [],
+      "always_on": false,
+      "required": false,
+      "runtime": "node",
+      "version": "1",
+      "install": "npm",
+      "npm_deps": {
+        "eslint": "^9.36.0",
+        "eslint-plugin-sonarjs": "4.2.1",
+        "eslint-plugin-oxlint": "1.85.0",
+        "typescript-eslint": "^8.70.1"
+      }
+    },
+    "pmd": {
+      "name": "pmd",
+      "adapter": "engine_java.py",
+      "languages": ["java"],
+      "always_on": false,
+      "required": false,
+      "runtime": "java",
+      "version": "7.27.0",
+      "download": {
+        "url": "https://github.com/pmd/pmd/releases/download/pmd_releases%2F{version}/pmd-dist-{version}-bin.{ext}",
+        "ext_map": { "darwin": "zip", "linux": "zip" }
+      },
+      "layout": {
+        "archive_dir": "pmd-bin-{version}",
+        "binary": "bin/pmd",
+        "wrapper": true
       },
       "checksum": null
     }

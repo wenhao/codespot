@@ -144,6 +144,8 @@ def do_scan(args):
         sys.stderr.write("codespot: no engine matches the target files\n")
         return 2
     for key, spec in chosen:
+        if spec.get("internal"):
+            continue
         if not setup_engine.engine_binary(key, spec["version"]):
             print("scan: %s not installed, running setup first..." % key)
             try:
@@ -246,6 +248,8 @@ def do_selftest(args):
     with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
         futures = {}
         for key, spec in registry.items():
+            if spec.get("internal"):
+                continue
             if not setup_engine.engine_binary(key, spec["version"]):
                 print("selftest: SKIP %s (not installed)" % key)
                 continue

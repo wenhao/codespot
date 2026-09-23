@@ -18,6 +18,20 @@
       "S112": "critical",
       "S506": "critical",
       "S608": "critical"
+    },
+    "oxlint": {
+      "default": "major",
+      "rules": {}
+    },
+    "eslint-sonarjs": {
+      "default": "major",
+      "rules": {
+        "sonarjs/hardcoded-credentials": "critical"
+      }
+    },
+    "eslint-core": {
+      "default": "minor",
+      "rules": {}
     }
   }
 }

@@ -1,36 +1,42 @@
 ---
 name: codespot
-description: Local static code scanning for AI-generated code. Use whenever the user asks to scan, lint, or statically check code, find bugs, secrets leaks, or security issues in their working tree — including phrases like "扫一下代码", "检查一下刚生成的代码", "静态检查", "有没有密钥泄漏" — even when they don't name codespot.
+description: Local static code scanning for AI-generated code. Use whenever the user asks to scan, lint, or statically check code, find bugs, secrets leaks, or security issues in their working tree — including phrases like "扫一下代码", "检查一下刚生成的代码", "静态检查", "扫扫这个 Java 文件", "检查 JS 代码", "有没有密钥泄漏" — even when they don't name codespot.
 ---
 
 # codespot
 
-本地多引擎静态扫描：对 git 范围内（未提交 / 未推送 / 全量）的代码运行 gitleaks（密钥）与 ruff（Python 质量）等引擎，产出 AI 可读的 `.codespot/report.json` 与人读的 `report.md`。
+本地多引擎静态扫描 + AI 修复循环。对 git 范围内（未提交 / 未推送 / 全量）的代码运行 gitleaks（密钥）、ruff（Python）、oxlint + ESLint/sonarjs（JS/TS）、PMD（Java），产出 AI 可读的 `.codespot/report.json` 与人读的 `report.md`。
 
 ## 工作流
 
-1. **前置检查**：目标目录必须是 git 仓库。引擎二进制装在 `~/.codespot/engines/`；未安装时先运行 setup（幂等，失败会提示）：
+1. **前置检查**：目标目录必须是 git 仓库。引擎装在 `~/.codespot/engines/`；未安装时先运行 setup（幂等）：
    ```bash
    <skill目录>/scripts/codespot setup
    ```
+   个别引擎安装失败（如无 npm / 无 JRE）不影响其余引擎；对应语言将缺少覆盖，需如实告知用户。
 2. **扫描**（在用户项目根目录）：
    ```bash
    <skill目录>/scripts/codespot scan --scope auto
    ```
-   `--scope` 取值：`auto`（默认：uncommitted → unpushed → all 依次取第一个非空）/ `uncommitted` / `unpushed` / `ref:<ref>` / `all`。
-3. **读报告**：读 `.codespot/report.json`（结构化 issues，按 severity 排序）。`engine_errors` 非空时如实告知用户哪些引擎失败，不要假装扫描完整。
-4. **呈现**：用中文向用户摘要（各严重级数量、最关键的几条），然后**必须**用 AskUserQuestion 呈现修复选项：
+   `--scope`：`auto`（默认）/ `uncommitted` / `unpushed` / `ref:<ref>` / `all`。
+3. **读报告**：读 `.codespot/report.json`。`engine_errors` 非空时如实说明哪些引擎失败，不要假装扫描完整。
+4. **呈现 + 修复选项**：用中文摘要（各严重级数量、最关键的几条），**必须**用 AskUserQuestion 呈现：
    - 仅修复 🔴 严重（critical）
    - 修复 🟠 重要及以上（major+）
    - 全部修复
    - 仅查看报告，不修复
-5. **修复**（用户选择修复时）：按文件分组逐条判断 issue 合理性（可能是误报）→ 编辑代码修复 → 修复完成后对改动文件重跑 `codespot scan` 验证。最多 3 轮，向用户汇总剩余问题。
-6. **收尾**：提醒用户将 `.codespot/` 加入其项目 `.gitignore`（报告是本地产物）。**不要**自动 commit。
+5. **修复循环**（用户选择修复时，按选定范围执行）：
+   - 逐条处理 issue，**修复前先判断合理性**：疑似误报（测试代码、示例占位符、有意为之）→ 跳过并记录原因；
+   - 按文件分组编辑修复；密钥类发现**永远提醒用户轮换密钥**（历史中已提交的密钥视为已泄漏），而非仅删行；
+   - 每轮修复后重跑 `codespot scan`（同 scope）验证；**最多 3 轮**；
+   - 确认的误报登记：普通工具写入 `.codespot/ignore`（`[{"tool":"ruff","file":"...","rule":"..."}]`），gitleaks 用其 fingerprint 写 `.gitleaksignore`；重扫确认不再出现；
+   - 收敛后给出汇总：**已修复 N 条 / 跳过 M 条（含原因）/ 剩余 K 条**。
+6. **收尾**：提醒将 `.codespot/` 加入项目 `.gitignore`。**不要**自动 commit。
 
 ## 规则与边界
 
-- **本版本不含自动修复循环**：第 5 步由你（agent）直接编辑代码完成；不要执行任何"自动改写"脚本。
-- 密钥类（gitleaks）发现**永远先提醒用户轮换密钥**，而不是仅仅"删除该行"——已提交历史中的密钥应视为已泄漏。
-- 修复前判断合理性：对疑似误报（如测试代码中的 assert、示例占位符），跳过并向用户说明，或建议加入 `.codespot/ignore`（格式 `[{"tool":"ruff","file":"...","rule":"..."}]`）与 `.gitleaksignore`。
-- 引擎失败（exit 2 / engine_errors）：报告失败原因与 setup 命令，不要静默降级为"没有问题"。
-- `codespot selftest` 可在怀疑引擎安装损坏时做回归自检。
+- 引擎失败（exit 2 / engine_errors）：报告原因与 setup 命令，不要静默降级为"没有问题"。
+- JS/TS 深度层（sonarjs）依赖 node/npm，缺失时仅有 oxlint 快速层覆盖——摘要中说明覆盖面。
+- 不要执行任何"自动改写"脚本；修复由你（agent）直接编辑代码完成。
+- 跳过修复的 issue 必须逐条给出理由，不允许无解释跳过。
+- `codespot selftest` 可在怀疑引擎损坏时做回归自检。
