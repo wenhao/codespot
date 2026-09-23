@@ -16,7 +16,17 @@
 
 ### Requirement: 引擎注册表驱动调度
 
-调度 SHALL 由 `scripts/engines/registry.json` 驱动：注册表 MUST 为每个引擎声明语言匹配（glob 或语言标识）、是否常开（always_on）、setup 命令与版本锁定；主控 SHALL 只对"语言层引擎匹配到目标文件，或常开引擎且目标文件非空"的组合调用适配器。
+调度 SHALL 由 `scripts/engines/registry.json` 驱动，并支持 **opt-in 引擎**：声明 `"opt_in": true` 的引擎默认不被调度，仅当 `scan --engine <name>` 显式命名、或 `.codespot/config.json` 的 `rules.<category>.enabled: true` 时被纳入；其余调度语义不变。
+
+#### Scenario: 默认不运行 opt-in 引擎
+
+- **WHEN** 未显式指定且范围含 .py 文件
+- **THEN** opt-in 引擎不被调度
+
+#### Scenario: 显式命名后运行
+
+- **WHEN** 执行 `codespot scan --engine trufflehog`
+- **THEN** trufflehog 被调度并产出发现
 
 #### Scenario: 无匹配引擎时不误调用
 
