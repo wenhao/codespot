@@ -39,4 +39,4 @@ Severity can be tuned per project via `.codespot/severity-overrides.json` (per-r
 
 ## Documentation
 - [可行性调研报告](docs/feasibility-research.md) — 技术选型、引擎矩阵、路线对比、实现设计与并行迭代计划（2026-09-23，两轮调研）
-- 实施按 OpenSpec 变更分批推进：`openspec/changes/`（当前：`add-scan-base-with-secrets-and-python`，M0 基座 + gitleaks + ruff）
+- 实施按 OpenSpec 变更分批推进：`openspec/changes/archive/`（M0 基座 + 密钥/Python、M1 JS/TS + Java PMD + 修复循环、M2 bandit + SQLFluff + SpotBugs 层均已交付；实验性 M3/M4 已取消，项目定稿于 M2）

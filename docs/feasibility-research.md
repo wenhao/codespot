@@ -446,8 +446,8 @@ Track 0 基座（串行，先行，~半天）
 | **M0 端到端闭环** | 基座 + 两个最轻引擎（gitleaks + ruff） | 0 + D + B(ruff 部分) | 夹具项目（含硬编码 AWS key + Python 问题代码）→ `scan --scope uncommitted` → 双报告 → agent 呈现修复选项 → 修复 → 重扫清零；密钥在报告中脱敏 |
 | **M1 核心三语言** | JS/TS 双层 + Java 源码级 + 修复循环完整 | + A + C(前半) + F | JS/TS/Java 夹具扫描+修复；oxlint 与 ESLint 对同一问题**不重复报告**；修复循环 ≤3 轮收敛 |
 | **M2 深度与长尾** | SpotBugs/FindSecBugs 编排 + bandit + SQLFluff + severity 配置化 | + C(后半) + B(bandit) + E | Maven 与 Gradle 夹具编译后能扫出 FindSecBugs 问题（含 CWE 编号）；SQL 夹具 dialect 探测或友好询问；`rules-severity.json` 用户可覆盖 |
-| **M3 实验与增强** | sonarlint-ls 实验适配器（明示 SSALv1 灰区）、tsgolint 类型感知、Opengrep 自写规则评估、`.codespot.toml` | + G | `--engine sonar` 在夹具上跑通（标注实验性）；类型感知规则在合成 tsconfig 下生效 |
-| **M4 发布** | ZCode plugin 打包、CI SARIF 上传、文档 | + H | 作为 plugin 安装后开箱可用；SARIF 可被 GitHub code scanning 消费 |
+| ~~M3 实验与增强~~ | **已取消**（2026-09-23 决策）：sonarlint-ls / tsgolint / Opengrep 等实验轨道不再实施；如未来需要可依据本报告第 3.3/3.6/3.10 节重启 | — | — |
+| ~~M4 发布~~ | **已取消**（2026-09-23 决策）：不做 plugin 打包；以"仓库软链到 `~/.agents/skills/codespot`"作为最终安装方式 | — | — |
 
 ### 6.5 引擎优先级矩阵（价值/工作量/风险）
 
