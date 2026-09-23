@@ -5,6 +5,7 @@ Contract (stable interface — later engine batches depend on this):
   exit 0: result.json written (list of issues); exit 2: engine failure, reason on stderr.
 """
 
+import hashlib
 import json
 import os
 import sys
@@ -15,6 +16,40 @@ REQUIRED_FIELDS = (
     "tool", "language", "rule", "ruleUrl", "severity",
     "file", "line", "column", "message", "snippet",
 )
+
+
+def cs_id(tool, rule):
+    """Stable user-facing rule code derived from tool|rule (no state)."""
+    return "CS-" + hashlib.sha1(("%s|%s" % (tool, rule)).encode("utf-8")).hexdigest()[:5]
+
+
+def load_project_config():
+    """Read .codespot/config.json (dialect, semgrep_config, rules{...})."""
+    p = os.path.join(_repo_root(), ".codespot", "config.json")
+    if os.path.isfile(p):
+        try:
+            with open(p, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except ValueError:
+            pass
+    return {}
+
+
+def category_of(tool):
+    """Map real engine name -> user-facing category alias (via registry)."""
+    try:
+        registry = os.path.join(os.path.dirname(os.path.abspath(__file__)), "registry.json")
+        with open(registry, "r", encoding="utf-8") as f:
+            return json.load(f)["engines"].get(tool, {}).get("category", tool)
+    except (OSError, ValueError, KeyError):
+        return tool
+
+
+def rule_ignore_list(tool):
+    """Rules ignored for this tool's category via config.json rules.<cat>.ignore."""
+    conf = load_project_config().get("rules", {}) or {}
+    entry = conf.get(category_of(tool)) or {}
+    return entry.get("ignore") or []
 
 
 def fail(msg):
@@ -54,6 +89,7 @@ def make_issue(tool, language, rule, rule_url, severity,
         "rule": str(rule),
         "ruleUrl": rule_url,
         "severity": normalize_severity(tool, rule, severity),
+        "csId": cs_id(tool, str(rule)),
         "file": file.replace(os.sep, "/"),
         "line": int(line),
         "column": int(column),

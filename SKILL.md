@@ -21,6 +21,7 @@ description: Local static code scanning for AI-generated code. Use whenever the 
    `--scope`：`auto`（默认）/ `uncommitted` / `unpushed` / `ref:<ref>` / `all`。
 3. **读报告**：读 `.codespot/report.json`。`engine_errors` 非空时如实说明哪些引擎失败，不要假装扫描完整。
 4. **呈现 + 修复选项**：用中文摘要（各严重级数量、最关键的几条），**必须**用 AskUserQuestion 呈现：
+   - 先查看问题详情（用 `codespot show` 按严重级/文件分批呈现，看完回到本选项）
    - 仅修复 🔴 严重（critical）
    - 修复 🟠 重要及以上（major+）
    - 全部修复
@@ -29,9 +30,15 @@ description: Local static code scanning for AI-generated code. Use whenever the 
    - 逐条处理 issue，**修复前先判断合理性**：疑似误报（测试代码、示例占位符、有意为之）→ 跳过并记录原因；
    - 按文件分组编辑修复；密钥类发现**永远提醒用户轮换密钥**（历史中已提交的密钥视为已泄漏），而非仅删行；
    - 每轮修复后重跑 `codespot scan`（同 scope）验证；**最多 3 轮**；
-   - 确认的误报登记：普通工具写入 `.codespot/ignore`（`[{"tool":"ruff","file":"...","rule":"..."}]`），gitleaks 用其 fingerprint 写 `.gitleaksignore`；重扫确认不再出现；
+   - 确认的误报登记：普通问题写入 `.codespot/ignore`（`[{"tool":"...","file":"...","rule":"..."}]`，键名用 report.json 的原始字段值），密钥类用其 fingerprint 写 `.gitleaksignore`；重扫确认不再出现；
    - 收敛后给出汇总：**已修复 N 条 / 跳过 M 条（含原因）/ 剩余 K 条**。
 6. **收尾**：提醒将 `.codespot/` 加入项目 `.gitignore`。**不要**自动 commit。
+
+## 品牌与呈现边界
+
+- **对用户呈现时只说 codespot**：问题编号一律用 `CS-xxxxx`（report.md / `codespot show` 输出的编号），不要向用户提及任何底层开源工具名。
+- `report.json` 是给 agent 的内部接口，保留原始字段（tool/rule/ruleUrl）供你修复时使用——内部决策可用，转述给用户时必须 codespot 化。
+- 规则删减/调参：引导用户写 `.codespot/config.json`（`rules` 段按检查类别：python_lint / python_security / js_lint / java / sql / secrets / semantic，支持 `disabled` 与 `ignore`）；高级用户可直接放原生配置文件（`.ruff.toml`、`.oxlintrc.json`、`.sqlfluff` 等），原生优先。
 
 ## 规则与边界
 

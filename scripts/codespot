@@ -41,11 +41,19 @@ def ensure_scope_list(root, scope, out_path):
 
 
 def select_engines(entries):
-    """Pick adapters per registry: language engines if they match a target file, always_on always."""
+    """Pick adapters per registry: language engines if they match a target file, always_on always.
+    Categories disabled via .codespot/config.json rules.<cat>.disabled are skipped."""
+    from common import load_project_config
     registry = setup_engine.load_registry()
+    disabled = {cat for cat, c in (load_project_config().get("rules") or {}).items()
+                if isinstance(c, dict) and c.get("disabled")}
     langs = {e.get("language") for e in entries if e.get("language")}
     chosen = []
     for key, spec in registry.items():
+        if spec.get("internal"):
+            continue
+        if spec.get("category") in disabled:
+            continue
         if spec.get("always_on") or (spec.get("languages") != ["*"] and langs.intersection(spec.get("languages", []))):
             chosen.append((key, spec))
     return chosen
@@ -73,21 +81,35 @@ def run_adapter(key, spec, root, list_path, out_path):
 
 
 def merge_issues(per_engine):
-    """Flatten, drop project ignores, severity already normalized by adapters."""
-    from common import read_project_ignores  # scripts/engines on path
+    """Flatten, drop project ignores + category rule-ignores, dedupe csIds, sort."""
+    from common import read_project_ignores, rule_ignore_list
     all_issues = []
     for key, issues in per_engine:
         ignores = read_project_ignores(key)
+        rule_ignores = set(rule_ignore_list(key))
         for issue in issues:
             if any(issue.get("file") == ig.get("file") and issue.get("rule") == ig.get("rule")
                    for ig in ignores):
                 continue
+            if issue.get("rule") in rule_ignores:
+                continue
             all_issues.append(issue)
+    # csId collision handling within one scan (spec: suffix -2, -3 …)
+    seen = {}
+    for issue in all_issues:
+        cid = issue["csId"]
+        if cid in seen:
+            seen[cid] += 1
+            issue["csId"] = "%s-%d" % (cid, seen[cid])
+        else:
+            seen[cid] = 1
     all_issues.sort(key=lambda i: (SEV_ORDER.get(i.get("severity"), 9), i.get("file", ""), i.get("line", 0)))
     return all_issues
 
 
 def render_md(payload):
+    """Human-facing report: codespot branding only — no underlying engine names."""
+    from common import category_of
     lines = []
     s = payload["summary"]
     if s["total"] == 0:
@@ -109,14 +131,19 @@ def render_md(payload):
         lines.append("## %s（%d）" % (title, len(group)))
         for i in group:
             lines.append("")
-            lines.append("- [%s](%s) `%s:%d` — %s" % (i["rule"], i.get("ruleUrl", ""), i["file"], i["line"], i["message"]))
+            lines.append("- [%s] `%s:%d` — %s" % (i["csId"], i["file"], i["line"], i["message"]))
             if i.get("snippet"):
                 lines.append("  - ```%s```" % i["snippet"].replace("\n", " ")[:160])
     if payload["engine_errors"]:
         lines.append("")
-        lines.append("## ⚠️ 引擎错误")
+        lines.append("## ⚠️ 检查模块提示")
+        # sanitize engine names out of human-facing reasons
+        names = {k: (v.get("category") or k) for k, v in setup_engine.load_registry().items()}
         for e in payload["engine_errors"]:
-            lines.append("- %s: %s" % (e["engine"], e["reason"]))
+            reason = e["reason"]
+            for name, cat in sorted(names.items(), key=lambda kv: -len(kv[0])):
+                reason = reason.replace(name, cat)
+            lines.append("- 检查模块（%s）本次不可用，已跳过：%s" % (category_of(e["engine"]), reason))
     return "\n".join(lines)
 
 
@@ -227,6 +254,40 @@ def do_report(args):
     return 0
 
 
+def do_show(args):
+    """User-facing issue details, codespot-branded (CS ids only, no engine names)."""
+    root = repo_root(args)
+    path = os.path.join(root, CODESPOT_DIR, REPORT_JSON)
+    if not os.path.isfile(path):
+        sys.stderr.write("codespot show: no report found (run codespot scan first)\n")
+        return 2
+    with open(path, "r", encoding="utf-8") as f:
+        payload = json.load(f)
+    sev_filter = {s.strip() for s in (args.severity or "").split(",") if s.strip()}
+    issues = payload.get("issues", [])
+    if sev_filter:
+        issues = [i for i in issues if i.get("severity") in sev_filter]
+    if args.file:
+        issues = [i for i in issues if i.get("file", "").startswith(args.file)]
+    if args.rule:
+        issues = [i for i in issues if i.get("csId", "") == args.rule]
+    if not issues:
+        print("没有匹配的问题（检查过滤条件，或重新 codespot scan）")
+        return 0
+    limit = len(issues) if args.all else args.limit
+    shown = issues[:limit]
+    print("共 %d 条匹配%s\n" % (len(issues), "" if args.all else "，显示前 %d 条" % limit))
+    for i in shown:
+        icon = {"critical": "🔴", "major": "🟠", "minor": "🟡", "info": "ℹ️"}.get(i["severity"], "•")
+        print("[%s] %s %s:%d" % (i["csId"], icon, i["file"], i["line"]))
+        print("      %s" % i["message"])
+        if i.get("snippet"):
+            print("      > %s" % i["snippet"].replace("\n", " ")[:160])
+    if len(issues) > len(shown):
+        print("\n… 其余 %d 条未显示（用 --all 或收窄过滤条件）" % (len(issues) - len(shown)))
+    return 0
+
+
 def do_selftest(args):
     fixtures = os.path.join(os.path.dirname(HERE), "tests", "fixtures")
     if not os.path.isdir(fixtures):
@@ -288,6 +349,9 @@ def _check_expectations(key, issues, expected, fixtures):
         if missing:
             problems.append("issue missing fields %s" % missing)
             break
+        if not (isinstance(i.get("csId"), str) and i["csId"].startswith("CS-")):
+            problems.append("issue missing valid csId")
+            break
         if i["severity"] not in SEV_ORDER:
             problems.append("bad severity %s" % i["severity"])
             break
@@ -301,6 +365,15 @@ def _check_expectations(key, issues, expected, fixtures):
     for bad in exp.get("forbidden_snippets", []):
         if any(bad in json.dumps(i) for i in issues):
             problems.append("forbidden raw snippet leaked: %s" % bad)
+    # branding: rendered md must not leak engine names
+    md = open(os.path.join(fixtures, ".codespot", "report.md")).read() \
+        if os.path.isfile(os.path.join(fixtures, ".codespot", "report.md")) else None
+    if md is not None:
+        for name in ("ruff", "bandit", "oxlint", "sonarjs", "PMD", "SpotBugs",
+                     "gitleaks", "sqlfluff", "semgrep", "eslint"):
+            if name in md:
+                problems.append("engine name '%s' leaked into report.md" % name)
+                break
     return problems
 
 
@@ -324,6 +397,14 @@ def main():
 
     sp = sub.add_parser("report", help="print last report.json")
     sp.set_defaults(fn=do_report)
+
+    sp = sub.add_parser("show", help="browse issue details from the last report")
+    sp.add_argument("--severity", help="filter: critical,major,minor,info (comma-separated)")
+    sp.add_argument("--file", help="filter by file path prefix")
+    sp.add_argument("--rule", help="filter by CS rule id")
+    sp.add_argument("--limit", type=int, default=50)
+    sp.add_argument("--all", action="store_true", help="show all matches")
+    sp.set_defaults(fn=do_show)
 
     sp = sub.add_parser("selftest", help="run fixture-based regression across engines")
     sp.set_defaults(fn=do_selftest)

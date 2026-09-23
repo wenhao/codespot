@@ -94,9 +94,14 @@ def main():
     if hint:
         sys.stderr.write("codespot-sql: %s\n" % hint)
 
-    r = subprocess.run([sqlfluff, "lint", "--dialect", dialect, "--format", "json",
-                        "--disable-progress-bar"] + paths,
-                       capture_output=True, text=True, timeout=600)
+    cmd = [sqlfluff, "lint", "--dialect", dialect, "--format", "json",
+           "--disable-progress-bar"]
+    # project-native .sqlfluff config wins over codespot's client-side filtering basis
+    native_cfg = os.path.join(a.workdir, ".sqlfluff")
+    if os.path.isfile(native_cfg):
+        cmd += ["--config", native_cfg]
+    cmd += paths
+    r = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
     if r.returncode not in (0, 1):
         fail("sqlfluff failed (exit %s): %s" % (r.returncode, (r.stderr or r.stdout).strip()[:300]))
     try:

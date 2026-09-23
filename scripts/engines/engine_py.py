@@ -33,6 +33,17 @@ def find_binary():
     return shutil.which("ruff")
 
 
+def _pyproject_has_ruff(workdir):
+    p = os.path.join(workdir, "pyproject.toml")
+    if not os.path.isfile(p):
+        return False
+    try:
+        with open(p, "r", encoding="utf-8", errors="replace") as f:
+            return "[tool.ruff" in f.read()
+    except OSError:
+        return False
+
+
 def to_issues(raw, workdir):
     issues = []
     for v in raw:
@@ -84,9 +95,15 @@ def main():
         return
 
     raw = []
+    native = any(os.path.isfile(os.path.join(a.workdir, f))
+                 for f in (".ruff.toml", "ruff.toml")) or \
+        _pyproject_has_ruff(a.workdir)
     for i in range(0, len(paths), BATCH):
         chunk = paths[i:i + BATCH]
-        cmd = [binary, "check", "--output-format", "json", "--config", CONFIG] + chunk
+        cmd = [binary, "check", "--output-format", "json"]
+        if not native:
+            cmd += ["--config", CONFIG]
+        cmd += chunk
         r = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
         if r.returncode not in (0, 1):
             fail("ruff failed (exit %s): %s" % (r.returncode, r.stderr.strip()[:300]))

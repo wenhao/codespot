@@ -35,8 +35,12 @@ def find_eslint_layer():
     return None
 
 
-def run_oxlint(binary, paths):
-    cmd = [binary, "--format", "json", "-c", os.path.join(ASSETS, ".oxlintrc.json")] + paths
+def run_oxlint(binary, paths, workdir):
+    cmd = [binary, "--format", "json"]
+    # project-native .oxlintrc.json wins over the codespot default
+    if not os.path.isfile(os.path.join(workdir, ".oxlintrc.json")):
+        cmd += ["-c", os.path.join(ASSETS, ".oxlintrc.json")]
+    cmd += paths
     r = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
     if r.returncode not in (0, 1):
         return None, "oxlint failed (exit %s): %s" % (r.returncode, r.stderr.strip()[:300])
@@ -140,7 +144,7 @@ def main():
     ox = find_oxlint()
     if not ox:
         fail("oxlint not installed; run: codespot setup")
-    raw, err = run_oxlint(ox, paths)
+    raw, err = run_oxlint(ox, paths, a.workdir)
     if err:
         fail(err)
     issues = oxlint_issues(raw or [], a.workdir)

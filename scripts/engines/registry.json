@@ -26,7 +26,8 @@
           "linux": "tar.gz"
         }
       },
-      "checksum": null
+      "checksum": null,
+      "category": "secrets"
     },
     "ruff": {
       "name": "ruff",
@@ -53,7 +54,8 @@
           "linux": "tar.gz"
         }
       },
-      "checksum": null
+      "checksum": null,
+      "category": "python_lint"
     },
     "oxlint": {
       "name": "oxlint",
@@ -86,7 +88,8 @@
       "layout": {
         "archive_binary": "oxlint-{arch}-{os}"
       },
-      "checksum": null
+      "checksum": null,
+      "category": "js_lint"
     },
     "eslint-layer": {
       "name": "eslint-layer",
@@ -127,7 +130,8 @@
         "binary": "bin/pmd",
         "wrapper": true
       },
-      "checksum": null
+      "checksum": null,
+      "category": "java"
     },
     "bandit": {
       "name": "bandit",
@@ -147,7 +151,8 @@
       "pip_deps_fallback": {
         "bandit": "1.8.6"
       },
-      "min_python": "3.10"
+      "min_python": "3.10",
+      "category": "python_security"
     },
     "sqlfluff": {
       "name": "sqlfluff",
@@ -167,7 +172,8 @@
       "pip_deps_fallback": {
         "sqlfluff": "3.4.2"
       },
-      "min_python": "3.10"
+      "min_python": "3.10",
+      "category": "sql"
     },
     "spotbugs": {
       "name": "spotbugs",
@@ -235,7 +241,8 @@
         "semgrep": "1.136.0"
       },
       "checksum": null,
-      "selftest_optional": true
+      "selftest_optional": true,
+      "category": "semantic"
     }
   }
 }

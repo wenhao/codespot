@@ -13,8 +13,9 @@ scripts/codespot setup
 scripts/codespot scan --scope auto
 
 # 3. Read the reports
-cat .codespot/report.json   # for AI agents
-cat .codespot/report.md     # human-readable summary
+cat .codespot/report.json   # for AI agents (internal fields + csId)
+cat .codespot/report.md     # human-readable, codespot-branded (CS-xxxxx ids)
+scripts/codespot show --severity critical,major   # browse issue details
 
 # Regression check
 scripts/codespot selftest
@@ -37,6 +38,19 @@ Engines are downloaded into `~/.codespot/engines/` (version-locked); reports lan
 | Cross-language semantic/taint (Go, C#, Kotlin, Ruby, PHP, Rust, Terraform…) | Semgrep CE 1.177 (fallback 1.136 on py3.9) | python3 (venv); first run fetches rules from the official registry |
 
 Severity can be tuned per project via `.codespot/severity-overrides.json` (per-rule and per-tool defaults); SQL dialect and a custom semgrep ruleset go in `.codespot/config.json` (`{"dialect": "postgres", "semgrep_config": "p/gosec"}`).
+
+### Branding & rule configuration
+
+- Human-facing output (report.md, `codespot show`) carries only codespot branding: rules get stable `CS-xxxxx` ids derived from the underlying rule. `report.json` (the agent-facing interface) additionally keeps the original tool/rule/ruleUrl fields for fix work.
+- Disable whole check categories or drop specific rules via `.codespot/config.json`:
+  ```json
+  {"rules": {
+    "python_security": {"disabled": true},
+    "python_lint": {"ignore": ["RUF100"]}
+  }}
+  ```
+  Categories: `secrets`, `python_lint`, `python_security`, `js_lint`, `java`, `sql`, `semantic`.
+- Power users: project-native config files win over codespot defaults — `.ruff.toml`/`ruff.toml`/`[tool.ruff]` in pyproject, `.oxlintrc.json`, `.sqlfluff`, `.gitleaks.toml` are picked up automatically.
 
 **License boundary**: codespot is an internal tool. Semgrep CE and its registry rules are used under the Semgrep Rules License "internal business purposes" only — rules are fetched at runtime on the user's machine and are not bundled with or distributed by codespot. Do not sell or externally distribute codespot with this engine enabled.
 
