@@ -1,6 +1,8 @@
 # codespot
 code static analysis tool
 
+**English** | [中文](README.zh.md)
+
 AI agent skill for local static code scanning: detect changed files via git (uncommitted / unpushed / full), run pluggable scan engines per language, and produce machine-readable reports that drive an AI-assisted fix loop.
 
 - **8 check dimensions** (see [engine matrix](#engine-matrix)): secrets, Python quality & security, JS/TS, Java (source + bytecode), SQL, dependency vulnerabilities, cross-language semantic/taint.
