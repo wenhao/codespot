@@ -12,7 +12,7 @@
 
 English | [中文](README.zh.md)
 
-📖 [Project Report](docs/project-report.html) · [Feasibility Research](docs/feasibility-research.md) · [Validation Report](docs/validation-report.html)
+📖 [Feasibility Research](docs/feasibility-research.md) 
 
 </div>
 
