@@ -1,24 +1,55 @@
+<div align="center">
+
 # codespot（中文说明）
-代码静态分析工具
 
-[English](README.md) | **中文**
+**为 AI 编码 agent 而生的本地多引擎静态代码扫描。**
 
-面向 AI agent 的本地静态代码扫描 skill：通过 git 识别改动文件（未提交 / 未推送 / 全量），按语言调用多个扫描引擎，产出机器可读报告，驱动 AI 辅助修复闭环。
+![engines](https://img.shields.io/badge/engines-10-blue)
+![languages](https://img.shields.io/badge/languages-12%2B-green)
+![runtime](https://img.shields.io/badge/runtime-python%20stdlib%20only-informational)
+![offline](https://img.shields.io/badge/offline-ready%20(via%20update--db)-9cf)
+![license](https://img.shields.io/badge/license-internal%20use-important)
 
-- **8 个检查维度**（见[引擎矩阵](#引擎矩阵)）：密钥泄漏、Python 质量与安全、JS/TS、Java（源码级 + 字节码级）、SQL、依赖漏洞、跨语言语义/taint 分析。
-- **默认增量扫描**：只扫你改过的代码（未提交 → 未推送 → 全量，自动降级）。
-- **对 AI 友好**：`.codespot/report.json` 保留完整内部字段供 AI 修复；`.codespot/report.md` 是面向人类的 codespot 品牌摘要（统一 `CS-xxxxx` 规则编号）。
-- **许可说明**：内部工具。Semgrep CE 的官方规则按 "internal business purposes"（仅限内部业务使用）条款使用——见[许可边界](#许可边界)。
+[English](README.md) | 中文
 
-## 安装与快速开始
+📖 [项目汇报（图文版）](docs/project-report.html) · [可行性调研报告](docs/feasibility-research.md) · [验证报告](docs/validation-report.html)
 
-skill 的可安装载荷全部在 `skill/` 子目录（文档与 openspec 规划文件不进入用户环境）。两种安装方式：
+</div>
 
-**方式 A：让 AI agent 自动安装（推荐——只需一句话）**。在 ZCode（或任何支持 `~/.agents/skills` 发现机制的 agent）里直接说：
+## 概览
+
+- **是 skill，不是服务器。** codespot 完全运行在本机、以 AI agent skill 形态存在：没有 SonarQube 式服务端、没有账号、代码不出仓库。任何支持 `~/.agents/skills` 发现机制的 agent 都能使用。
+- **十个引擎，一份报告。** 密钥、Python 质量与安全、JS/TS、Java（源码+字节码）、SQL、跨语言 taint、依赖 CVE——全部归一为一份按严重级排序的报告，规则带稳定 `CS-xxxxx` 编号。
+- **默认增量扫描。** 只扫你改动的部分（未提交 → 未推送 → 全量自动降级），契合"生成、扫描、修复、重扫"的 AI 编码节奏。
+- **Agent 优先输出。** `report.json` 保留完整内部字段（tool/rule/ruleUrl/fixHint）供 agent 精确修复；`report.md` 与 `codespot show` 面向人类、codespot 品牌、密钥强制脱敏。
+
+## 功能特性
+
+- **增量扫描范围** —— `auto` / `uncommitted` / `unpushed` / `ref:<ref>` / `all`；发现不改变退出码，CI 可发布报告而不打断构建。
+- **AI 语义审查（默认开启）** —— 每次扫描生成审查计划；agent 审查静态规则抓不到的问题（逻辑、并发、错误处理缺口、跨文件不一致），经 `codespot ai-scan absorb` 校验合并。
+- **AI 修复闭环** —— 按严重级选择修复范围，agent 改码、重扫验证（≤3 轮）、汇总已修复/跳过/剩余；误报进白名单。
+- **密钥检测** —— 常开层 222 条规则 + 报告脱敏 + "先轮换后清理"工作流；可选 TruffleHog 深度层（800+ 检测器，活体验证默认关闭）。
+- **依赖漏洞（SCA）** —— OSV-Scanner 扫 requirements/锁文件/pom/go.mod，支持离线漏洞库（`codespot update-db`），每条发现附升级目标版本。
+- **规则治理** —— 三层配置（原生工具配置 > `.codespot/config.json` 类别开关 > 内置默认）、severity 覆盖、单条误报白名单。
+- **内建回归** —— `codespot selftest` 全引擎夹具自检；`codespot show` 按严重级/文件/CS 编号浏览发现。
+
+## 为什么需要 codespot
+
+AI 生成的代码需要的不止 AI 审查。纯模型扫描是非确定性的：底下没有规则目录、没有 CVE 数据库、没有密钥特征库——幻觉式保证与静默漏报与生俱来。codespot 把确定性引擎与 agent 语义配对：规则、CVE、密钥模式交给工具，模型只审查规则表达不了的东西。
+
+传统扫描器也嵌不进这个循环。它们假设 CI 流水线和一个可连接的服务端；在本地 git 仓库里工作的 agent 无法按需调用它们，更没有一个能闭环"扫描→报告→修复→重扫"。codespot 就是为这个闭环而生的本地 CLI，自然语言即可驱动（"扫一下代码"）。
+
+许可合规是从第一天起的设计约束。Sonar 系分析器已转向非开源的 SSALv1（限制把分析结果喂给非捆绑 AI），因此 codespot 组装干净许可的引擎（MIT/Apache/LGPL），运行时从官方源下载、绝不打包再分发。
+
+## 快速开始：用 codespot 扫描一个仓库
+
+### 1. 让 AI agent 安装
+
+在 ZCode（或任何支持 `~/.agents/skills` 发现的 agent）里直接说：
 
 > 安装 https://github.com/wenhao/codespot.git 中的 skill 并使用 codespot 扫描当前仓库
 
-agent 会执行等价于下面的命令：
+agent 会执行等价于：
 
 ```bash
 git clone --depth 1 https://github.com/wenhao/codespot.git ~/.codespot/src/codespot
@@ -26,232 +57,173 @@ ln -s ~/.codespot/src/codespot/skill ~/.agents/skills/codespot   # 仅软链 ski
 ~/.agents/skills/codespot/scripts/codespot setup                  # 引擎安装（幂等）
 ```
 
-随后用自然语言（"扫一下代码"）即可触发扫描。升级：`git -C ~/.codespot/src/codespot pull` 后重跑 `setup`；卸载：删除软链与 `~/.codespot/`。
+### 2. 跑第一次扫描
 
-**方式 B：手动安装**：
+自然语言触发（"扫一下代码"），或直接 CLI：
+
+```bash
+~/.agents/skills/codespot/scripts/codespot scan --scope auto
+```
+
+扫描同时生成 `.codespot/ai-plan.json`；agent 按计划审查、写 `ai-result.json`，然后合并：
+
+```bash
+~/.agents/skills/codespot/scripts/codespot ai-scan absorb
+```
+
+查看结果：
+
+```bash
+cat .codespot/report.md                                      # 人读报告，CS 编号
+~/.agents/skills/codespot/scripts/codespot show --severity critical,major
+```
+
+随后 agent 呈现修复选项（仅严重 / 重要+ / 全部 / 先看详情）、修复代码、重扫验证并汇总。
+
+### 3. 调规则、持续迭代
+
+放一个原生配置（`.ruff.toml`、`.oxlintrc.json`、`.sqlfluff`、`.gitleaks.toml`）——codespot 将以它替代内置默认。或用类别开关：
+
+```json
+// .codespot/config.json
+{
+  "dialect": "postgres",
+  "rules": {
+    "python_lint": { "ignore": ["RUF100"] },
+    "secrets_deep": { "enabled": true }
+  }
+}
+```
+
+### 更喜欢手动安装？
 
 ```bash
 git clone https://github.com/wenhao/codespot.git && ln -s "$(pwd)/codespot/skill" ~/.agents/skills/codespot
 ```
 
-```bash
-# 1. 安装引擎（幂等；按项目需要自动选择）
-~/.agents/skills/codespot/scripts/codespot setup
-
-# 2. 扫描（在任意 git 仓库；scope auto = 未提交 → 未推送 → 全量 自动降级）
-#    AI 语义审查默认随扫描执行：扫描会生成 .codespot/ai-plan.json，
-#    agent 按计划分析并写 ai-result.json 后合并：
-~/.agents/skills/codespot/scripts/codespot scan --scope auto
-~/.agents/skills/codespot/scripts/codespot ai-scan absorb   # 写完 ai-result.json 后执行
-
-# 3. 查看报告
-cat .codespot/report.md     # 人类可读，codespot 品牌（CS-xxxxx 编号）
-cat .codespot/report.json   # AI agent 用：内部字段（tool/rule/ruleUrl）+ csId
-~/.agents/skills/codespot/scripts/codespot show --severity critical,major   # 浏览问题详情
-~/.agents/skills/codespot/scripts/codespot show --rule CS-5ebd4             # 定位某条规则的命中
-
-# 回归自检（夹具驱动，覆盖全部引擎）
-~/.agents/skills/codespot/scripts/codespot selftest
-```
-
-引擎下载到 `~/.codespot/engines/`（版本锁定）；报告落在目标仓库的 `.codespot/`——请把 `.codespot/` 加进项目的 `.gitignore`。
-
-### AI 语义审查（默认开启）
-
-每次 `codespot scan` 都会生成 `.codespot/ai-plan.json`——给 AI agent 的审查计划（目标文件、输出 schema、语义审查重点）。agent 针对静态规则抓不到的问题（逻辑错误、并发竞态、错误处理缺口、跨文件不一致）进行分析，写 `.codespot/ai-result.json`（每条带 `confidence`），再执行 `codespot ai-scan absorb` 校验合并进报告（建议性发现，与其他发现同样用 CS 编号）。超过 40 文件 / 5000 行自动分批。对话中说"只扫不审"可单次跳过，或用 `{"rules": {"ai_review": {"disabled": true}}}` 永久关闭。
-
-## CLI 参考
-
-| 命令 | 用途 |
-|---|---|
-| `codespot setup [引擎…]` | 安装引擎（幂等、版本锁定；单个失败不阻塞其他） |
-| `codespot scope --scope <档位>` | 打印扫描将使用的文件清单 |
-| `codespot scan --scope <档位> [--engine 名称…]` | 运行所有匹配引擎（含显式点名的 opt-in 引擎），写出双报告 |
-| `codespot show [--severity 级别] [--file 前缀] [--rule CS-编号] [--limit N] [--all]` | 浏览最近一次报告的问题详情 |
-| `codespot ai-scan absorb` | 校验并合并 agent 写入的 AI 审查结果（`.codespot/ai-result.json`）到最近报告 |
-| `codespot report` | 打印最近一次 report.json |
-| `codespot update-db` | 下载/刷新本地 OSV 漏洞库（启用离线依赖扫描） |
-| `codespot selftest` | 夹具驱动的全引擎回归自检 |
-
-**opt-in 引擎**：registry 中标记 `opt_in` 的引擎（当前为 TruffleHog）默认绝不运行——用可重复的 `--engine <名称>` 显式点名，或通过 `.codespot/config.json` 永久启用：`{"rules": {"secrets_deep": {"enabled": true}}}`。与之相反，**AI 语义审查默认随每次扫描执行**，关闭用 `{"rules": {"ai_review": {"disabled": true}}}`。
-
-**扫描范围**（`--scope`）：`auto`（默认：未提交 → 未推送 → 全量取第一个非空）、`uncommitted`（含未跟踪文件）、`unpushed`（无上游分支时回退与 `main` 比较）、`ref:<ref>`、`all`。
-
-**退出码**（scan/setup）：`0` = 流程完成（是否有问题不改变退出码——后续动作由 agent 依据报告决定）；`2` = 编排/安装失败。CI 提示：只要扫描流程本身成功退出码就是 0，流水线可以放心发布报告而不打断构建。
+升级：`git -C ~/.codespot/src/codespot pull` 后重跑 `setup`；卸载：删除软链与 `~/.codespot/`。
 
 ## 引擎矩阵
 
 | 类别（配置键） | 引擎 | 运行要求 | 说明 |
 |---|---|---|---|
-| `secrets`（常开） | gitleaks 8.30 | — | `dir` 模式，报告强制脱敏 |
+| `secrets`（常开） | gitleaks 8.30 | — | `dir` 模式，报告脱敏 |
 | `python_lint` | ruff 0.16 | — | JSON 输出保留修复建议 |
-| `python_security` | bandit | python3（独立 venv） | |
+| `python_security` | bandit | python3（venv） | |
 | `js_lint` | oxlint 1.85 | — | 快速层 |
-| `js_lint`（深度） | ESLint + eslint-plugin-sonarjs | node/npm | 无 node/npm 时优雅降级为快速层 |
+| `js_lint`（深度） | ESLint + eslint-plugin-sonarjs | node/npm | 缺失时优雅降级为快速层 |
 | `java` | PMD 7.27 | JRE 8+ | 源码级，无需编译 |
 | `java`（深度，可选） | SpotBugs 4.10 + FindSecBugs 1.14 | mvn/gradle + JDK | 项目不可编译时自动跳过 |
-| `sql` | SQLFluff | python3（独立 venv） | 方言自动探测链 |
-| `semantic` | Semgrep CE 1.177（py3.9 回退 1.136） | python3（独立 venv） | Go/C#/Kotlin/Ruby/PHP/Rust/Terraform…；规则从官方 registry 拉取 |
-| `dependencies` | OSV-Scanner 2.6 | —（查询 osv.dev） | 扫描 requirements/锁文件/pom/go.mod 的已知 CVE |
-| `secrets_deep`（**opt-in**） | TruffleHog 3.97 | — | 800+ 检测器；默认 `--no-verification`（纯本地）；仅 `--engine trufflehog` 或 `rules.secrets_deep.enabled` 时运行 |
-| `ai_review`（**默认开启**，agent 驱动） | AI agent 本身 | — | 语义级审查（逻辑/并发/错误处理缺口）；每次扫描生成 `.codespot/ai-plan.json` → 分析 → `codespot ai-scan absorb`；`rules.ai_review.disabled` 可关；发现为建议性并附 confidence |
+| `sql` | SQLFluff | python3（venv） | 方言自动探测链 |
+| `semantic` | Semgrep CE 1.177（py3.9 回退 1.136） | python3（venv） | Go/C#/Kotlin/Ruby/PHP/Rust/Terraform…；规则运行时从官方 registry 拉取 |
+| `dependencies` | OSV-Scanner 2.6 | —（查询 osv.dev） | 离线库经 `codespot update-db` |
+| `secrets_deep`（**opt-in**） | TruffleHog 3.97 | — | `--engine trufflehog`；默认 `--no-verification` |
+| `ai_review`（**默认开启**） | AI agent 本身 | — | 计划 → 分析 → `ai-scan absorb`；`rules.ai_review.disabled` 可关 |
 
-## 各语言规则数量与去重
+### 各语言规则数量与去重
 
-下表数量是 codespot **实际启用**的规则数（2026-09-23 对本机安装引擎逐一实测），不是各工具的完整目录。
+数量为 codespot 实际启用数（2026-09-23 对本机引擎实测）。
 
-| 语言 | 质量 / 规范 | 安全 | 依赖 / 供应链 |
+| 语言 | 质量 / 规范 | 安全 | 依赖 |
 |---|---|---|---|
-| Python | ruff：**启用 503 条**（定义共 970；E/W/F/PL/B/RUF 族，剔除风格噪音） | ruff S 族 + bandit（32 个插件，B1xx–B7xx） | OSV-Scanner（osv.dev 公告库） |
-| JavaScript / TypeScript | oxlint：**启用 335 条**（correctness 272 + suspicious 63，共 870） | eslint-plugin-sonarjs：**约 215 条 Sonar 规则**（bug/安全/坏味道） | OSV-Scanner（package-lock/yarn.lock） |
-| Java | PMD：**启用 213 条**（226 条类别规则 − 13 条排除；errorprone/bestpractices/security/design/multithreading） | SpotBugs **约 470 个 bug 模式** + FindSecBugs **144 个安全检测器**（带 CWE，字节码级，需可编译） | OSV-Scanner（pom.xml） |
-| SQL | SQLFluff：**启用约 48 条**（共 68；剔除 layout/capitalisation 排版组） | — | — |
-| Go / C# / Kotlin / Ruby / PHP / Rust / Swift / Scala | 适用处由 oxlint/ESLint 覆盖 | Semgrep `auto` 规则包（**2800+** 条 registry 规则） | OSV-Scanner（go.mod/Cargo/composer/Gemfile/*.csproj） |
-| 密钥（任意语言） | — | gitleaks：**222 条规则**（厂商密钥/私钥/熵值启发式）；TruffleHog 深度层（opt-in）：**800+ 检测器** | — |
+| Python | ruff：**启用 503**（共 970） | ruff S 族 + bandit（32 插件） | OSV-Scanner |
+| JavaScript / TypeScript | oxlint：**335** + sonarjs：**约 215** | 同左 + Semgrep | OSV-Scanner |
+| Java | PMD：**213** | SpotBugs **约 470** + FindSecBugs **144**（CWE 标注） | OSV-Scanner |
+| SQL | SQLFluff：**约 48**（共 68） | — | — |
+| Go / C# / Kotlin / Ruby / PHP / Rust / Swift / Scala | — | Semgrep `auto` 规则包（**2800+**） | OSV-Scanner |
+| 密钥（任意语言） | — | gitleaks **222**；TruffleHog 800+（opt-in） | — |
 
-**工具间去重**（有意设计，已在 express/jsoup 验证扫描中实测）：
+去重是设计使然：`eslint-plugin-oxlint` 关闭快速层已覆盖的全部 ESLint 规则；sonarjs 只贡献独有 Sonar 规则；PMD（源码）与 SpotBugs（字节码）互补；ruff-S 与 bandit-B 有意并存（语义不同、规则号独立）。
 
-- **JS/TS**：`eslint-plugin-oxlint` 会关闭所有快速层（oxlint）已覆盖的 ESLint-core/typescript-eslint 规则——每个问题只报一次。sonarjs 只贡献其独有的 Sonar 规则（与 no-unused-vars 重复的变体已显式关闭）。
-- **Python**：ruff 的 flake8-bandit（`S` 族）与 bandit 的 `B` 族在安全主题上有意重叠；两者都运行，因为规则语义不同。发现保留各自规则编号，不会丢失信息。
-- **Java**：PMD（源码级、无需编译）与 SpotBugs/FindSecBugs（字节码级、需可编译）是互补的两层；少量重叠（如资源关闭类）是有意保留的。
-- 同一行上不同引擎的重复**发现**不做合并——不同工具的判定结果都被保留并标注来源。
+## CLI 一览
 
-## 规则删减、调参与参数调整
-
-所有配置都在**被扫描的项目**里，绝不放在 `~/.codespot`。三层配置，优先级从高到低：
-
-### 1. 原生配置文件（能力完整，调参推荐）
-
-项目里存在原生配置时，codespot 对该引擎**直接采用**（替代内置默认）：
-
-| 文件 | 作用范围 |
+| 命令 | 说明 |
 |---|---|
-| `.ruff.toml` / `ruff.toml` / `pyproject.toml` 的 `[tool.ruff]` | ruff——规则选择/忽略、`line-length` 等全部参数 |
-| `.oxlintrc.json` | oxlint——类别与规则 |
-| `.sqlfluff` | SQLFluff——方言、规则、排版行为 |
-| `.gitleaks.toml` | gitleaks——自定义规则 / 白名单 |
+| `codespot setup [引擎…]` | 安装引擎（幂等、版本锁定；单引擎失败不阻塞其他） |
+| `codespot scope --scope <档位>` | 打印扫描将使用的文件清单 |
+| `codespot scan --scope <档位> [--engine 名称…]` | 运行匹配引擎 + 显式点名的 opt-in 引擎；写出双报告与 AI 审查计划 |
+| `codespot show [--severity 级别] [--file 前缀] [--rule CS-编号] [--limit N] [--all]` | 浏览最近一次报告的问题详情 |
+| `codespot ai-scan absorb` | 校验并合并 agent 写入的 AI 审查结果到最近报告 |
+| `codespot update-db` | 下载/刷新本地 OSV 漏洞库（启用离线依赖扫描） |
+| `codespot report` | 打印最近一次 report.json |
+| `codespot selftest` | 夹具驱动的全引擎回归自检 |
 
-示例——放宽行宽并忽略两条 ruff 规则，创建 `.ruff.toml`：
+## 配置
 
-```toml
-line-length = 120
-[lint]
-ignore = ["E501", "PLR0913"]
+三层，优先级从高到低：
+
+1. **原生配置文件** —— `.ruff.toml` / `ruff.toml` / pyproject 的 `[tool.ruff]`、`.oxlintrc.json`、`.sqlfluff`、`.gitleaks.toml`。存在即整体替代内置默认（参数能力完整）。
+2. **`.codespot/config.json`** —— 类别开关（`disabled` / `ignore` / `enabled`）、SQL `dialect`、`semgrep_config`。类别：`secrets`、`python_lint`、`python_security`、`js_lint`、`java`、`sql`、`semantic`、`dependencies`、`secrets_deep`、`ai_review`。
+3. **内置默认** —— 位于 `skill/assets/`。
+
+严重级调整：`.codespot/severity-overrides.json`（`{"ruff": {"rules": {"RUF100": "info"}}}`）。单条误报：`.codespot/ignore`（`[{"tool": "ruff", "file": "src/app.py", "rule": "PLW0603"}]`）；密钥误报用 `.gitleaksignore` 指纹。
+
+## 漏洞库与引擎更新
+
+- **OSV-Scanner 离线优先**：有本地库（跑一次 `codespot update-db`，缓存于 `~/Library/Caches/osv-scalibr/` 或 `~/.cache/osv-scalibr/`）时依赖扫描完全离线；无库时实时查询 osv.dev。重跑 `update-db` 即刷新。
+- **Semgrep 规则** 缓存于 `~/.semgrep/`；删缓存强制刷新，严格离线可把 `semgrep_config` 指向本地规则目录。
+- **引擎升级**：改 `skill/scripts/engines/registry.json` 的 `version` 后重跑 `setup`；重置：`rm -rf ~/.codespot/engines/<name>-<version>`。
+
+## 扩展：新增引擎
+
+1. 编写 `skill/scripts/engines/engine_<name>.py`，实现适配器契约：`--workdir <根> --files <清单.json> --out <结果.json>`；成功退出 `0`（issue JSON 数组），失败退出 `2`（原因写 stderr）。
+2. 输出统一 issue schema（`common.make_issue`）；severity 经 `rules-severity.json` 归一。
+3. 在 `registry.json` 注册（安装形态、版本、语言、类别），并在 `skill/tests/fixtures/` + `expected.json` 添加夹具。
+
+## 项目结构
+
+```text
+codespot/
+├── skill/                        # 可安装 skill 载荷（软链此目录）
+│   ├── SKILL.md                  # agent 工作流与触发
+│   ├── scripts/
+│   │   ├── codespot              # 主 CLI
+│   │   ├── scope.py              # git 范围计算
+│   │   ├── setup_engine.py       # 安装器（binary/zip/npm/venv/raw）
+│   │   ├── rules-severity.json   # severity 映射
+│   │   └── engines/              # 适配器 + registry.json
+│   ├── assets/                   # 引擎默认配置
+│   └── tests/fixtures/           # selftest 夹具与预期
+├── docs/                         # 调研与报告（不属于 skill）
+└── openspec/                     # 规格驱动变更历史（归档）
 ```
 
-### 2. `.codespot/config.json`（简单开关，codespot 风格）
+## 离线与平台说明
 
-使用**检查类别**（无需书写引擎名）：
+- 联网做一次 `setup` + `update-db` 后，除 Semgrep 外全部能力离线可用；Semgrep 需规则缓存或本地规则目录。
+- Windows：除 Semgrep（需 WSL2/Docker）外可用，另需少量 registry/wrapper 适配；当前在 macOS/Linux 充分验证。
 
-```json
-{
-  "dialect": "postgres",
-  "semgrep_config": "p/gosec",
-  "rules": {
-    "python_security": {"disabled": true},
-    "python_lint": {"ignore": ["RUF100"]},
-    "dependencies": {"ignore": ["GHSA-xxxx-yyyy-zzzz"]}
-  }
-}
-```
+### 平台兼容性（Windows 支持现状）
 
-- `rules.<类别>.disabled: true` —— 整体关闭该类别。
-- `rules.<类别>.ignore: [规则编号…]` —— 删减特定发现（编号为 report.json 中出现的底层规则码）。
-- `dialect` —— 方言无法自动探测时指定 SQLFluff 方言。
-- `semgrep_config` —— 覆盖默认 `auto` 规则集（可为 registry 规则集、本地规则目录或单个规则文件）。
+| 维度 | 现状 |
+|---|---|
+| 主控 CLI / 报告 / scope | 兼容（纯 Python 标准库，路径统一正斜杠） |
+| gitleaks / ruff / oxlint / OSV-Scanner | 官方有 Windows 二进制；registry 的 `os_map` 需补 `windows` 映射 |
+| PMD / SpotBugs | 发行包跨平台；wrapper 需改用自带 `.bat` 启动器 |
+| SQLFluff / bandit | 纯 Python venv，天然跨平台 |
+| Semgrep CE | 不支持 Windows 原生（需 WSL2/Docker），`semantic` 类别不可用，其余不受影响 |
+| 符号链接聚合 | 已有复制回退 |
 
-类别：`secrets`、`python_lint`、`python_security`、`js_lint`、`java`、`sql`、`semantic`、`dependencies`。
+正式支持 Windows 预计约一天（补平台映射、wrapper 改 .bat、修 `file:///C:/...` 解析）并需真机 selftest。
 
-### 3. codespot 内置默认（兜底）
+### 离线使用指南
 
-位于 `codespot/skill/assets/`——以上两层都不存在时生效。
-
-**严重级调整**（某规则分级不合意）通过 `.codespot/severity-overrides.json`：
-
-```json
-{"ruff": {"rules": {"RUF100": "info"}}, "pmd": {"default": "minor"}}
-```
-
-**误报**（某处特定命中）：加入 `.codespot/ignore`：
-
-```json
-[{"tool": "ruff", "file": "src/app.py", "rule": "PLW0603"}]
-```
-
-密钥误报使用 gitleaks 自带的指纹文件：把发现中的 `Fingerprint` 写入仓库根目录的 `.gitleaksignore`。
-
-## 漏洞数据库与引擎更新
-
-- **依赖漏洞（OSV-Scanner）—— 离线优先**：
-  - 尚无本地库时：每次扫描实时查询 [osv.dev](https://osv.dev) API（数据永远最新，需要联网）。
-  - 运行一次 `codespot update-db` 下载本地漏洞库（缓存于 `~/Library/Caches/osv-scalibr/` 或 `~/.cache/osv-scalibr/`）。
-  - 本地库存在后，依赖扫描完全离线（自动加 `--offline-vulnerabilities`）；重跑 `codespot update-db` 即可刷新。适配器自动选择：有离线库走离线，没有走在线。
-- **Semgrep 规则**：从官方 registry 拉取后缓存于 `~/.semgrep/`。重复扫描复用缓存；删除 `~/.semgrep/cache`（或换用其他规则集）可强制刷新。
-- **引擎升级**：引擎版本锁定在 `scripts/engines/registry.json`（`version` 字段）。升级时改版本号并重跑 `scripts/codespot setup`（旧版本保留在 `~/.codespot/engines/`，可手动删除）。
-- **重置某个引擎**：`rm -rf ~/.codespot/engines/<name>-<version>` 后重新 `codespot setup`。
-
-## 平台兼容性（Windows 支持现状）
-
-codespot 主体为纯 Python 标准库实现，**大部分能力天然跨平台**，但当前版本在 Windows 上有以下已知差异（开发与验证均在 macOS/Linux 完成，Windows 属"可支持但未实测"）：
-
-| 维度 | 现状 | 说明 |
-|---|---|---|
-| 主控 CLI / 报告 / scope | ✅ 兼容 | 纯 Python 标准库；路径已统一正斜杠输出 |
-| gitleaks / ruff / oxlint / OSV-Scanner | ⚠️ 需补充 | 各自官方均有 Windows 二进制；registry 的 `os_map` 目前只登记了 darwin/linux，需增加 `windows` 条目 |
-| PMD / SpotBugs | ⚠️ 需小改 | 发行包本身跨平台；codespot 生成的启动 wrapper 是 shell 脚本，需改用各自自带的 `.bat` 启动器 |
-| SQLFluff / bandit | ✅ 兼容 | 纯 Python，venv 安装形态天然跨平台 |
-| Semgrep CE | ❌ 不支持 | 官方不提供 Windows 原生版本，需 WSL2 或 Docker；这是 Windows 上唯一的功能性缺口（`semantic` 类别不可用，其余类别不受影响） |
-| 符号链接聚合（密钥大批量场景） | ⚠️ 已有回退 | Windows 创建符号链接需要特权；适配器已有复制回退逻辑 |
-
-若需要正式支持 Windows：预计工作量约一天（补 registry 平台映射、wrapper 改 .bat、修正 `file:///C:/...` URI 解析），并需在真实 Windows 环境跑一轮 selftest。
-
-## 离线使用指南
-
-**提前准备（联网环境做一次即可）**：
-
-1. `codespot setup` —— 把全部所需引擎下载到本地（此后引擎本体不再需要网络）。
-2. `codespot update-db` —— 下载 OSV 本地漏洞库，启用离线依赖扫描。
-3. 跑一次在线扫描 —— 预热 Semgrep 规则缓存（`~/.semgrep/`）；JS/TS 深度层的 ESLint 规则随 setup 已本地化。
-
-**之后离线扫描的各引擎表现**：
+**提前准备（联网做一次）**：① `codespot setup`（引擎本地化）；② `codespot update-db`（OSV 离线库）；③ 跑一次在线扫描预热 Semgrep 规则缓存。
 
 | 引擎 | 离线状态 |
 |---|---|
-| gitleaks / ruff / oxlint / PMD / SpotBugs / SQLFluff / bandit / ESLint 深度层 | ✅ 完全离线 |
-| OSV-Scanner | ✅ 有本地库时完全离线（`update-db` 后）；无库时引擎失败并被隔离 |
-| Semgrep | ⚠️ 有规则缓存时通常可用；`auto` 模式可能尝试访问 registry 失败——严格离线场景建议在 config.json 把 `semgrep_config` 指向本地规则目录 |
+| gitleaks / ruff / oxlint / PMD / SpotBugs / SQLFluff / bandit / ESLint 深度层 | 完全离线 |
+| OSV-Scanner | 有本地库时完全离线；无库时引擎失败并被隔离 |
+| Semgrep | 有缓存通常可用；严格离线建议 `semgrep_config` 指向本地规则目录 |
 
-**失败语义**：任何引擎离线失败都会进入 `report.json` 的 `engine_errors`（并被人读报告以中性措辞提示），**不会阻塞或污染其他引擎的结果**。
+任何引擎离线失败只进 `engine_errors`，不污染其他结果。
 
-## 报告与品牌
+## 已知限制
 
-- `report.md` / `codespot show` 是 **codespot 品牌**：每条规则有稳定的 `CS-xxxxx` 编号（由底层规则派生——同规则同编号，跨仓库跨次扫描一致）。不会向用户显示底层引擎名称。
-- `report.json` 是 agent 接口：每条问题保留 `tool` / `rule` / `ruleUrl` / `csId` / `fixHint`，AI 可据此精确研究与修复。
-- 密钥类发现在两份报告中都强制脱敏（保留前后 4 字符）。发现真实密钥：**先轮换密钥**——已提交进历史的密钥，删行不等于止损。
+- JS/TS 类型感知规则未开启（需 tsconfig）；SpotBugs 层需项目可编译（PMD 源码级仍覆盖）。
+- Dockerfile（无扩展名）未被语言检测识别；可经 `semgrep_config` 覆盖。
+- py3.9 机器上 SQLFluff 运行 3.x 旧线（4.x 需 python ≥3.10）。
 
-## 新增引擎
+## 许可
 
-引擎是自包含适配器，添加步骤：
-
-1. 编写 `scripts/engines/engine_<name>.py`，实现契约：`--workdir <仓库根> --files <清单.json> --out <结果.json>`；成功退出 `0`（结果为 issue JSON 数组），失败退出 `2`（原因写 stderr）。
-2. 输出统一 issue schema（见 `common.make_issue`）——severity 经 `scripts/rules-severity.json` 归一化。
-3. 在 `scripts/engines/registry.json` 注册（安装形态、版本、语言、类别），并在 `tests/fixtures/` + `expected.json` 添加夹具。
-
-## 已知限制与建议改进
-
-- **JS/TS 类型感知规则**未开启（需要 tsconfig）；纯 Python 仓库不受影响。
-- **SpotBugs 深度层**需要项目可编译；否则静默跳过（PMD 源码级仍然覆盖）。
-- **OSV-Scanner 需要联网**（除非先 `update-db`）；离线漏洞库模式已支持。
-- **Dockerfile**（无扩展名）尚未被语言检测识别；可通过 `semgrep_config` 让 semgrep 覆盖。
-- **`.codespot/config.json` 是唯一的项目配置入口**——可按需增加 `.codespot.toml` 变体与按路径的规则作用域。
-- **py3.9 机器上 SQLFluff** 运行 3.x 旧线（4.x 需要 python ≥3.10）。
-- **Windows**：见[平台兼容性](#平台兼容性windows-支持现状)。
-
-## 许可边界
-
-codespot 是内部工具。TruffleHog（AGPL-3.0）与 Semgrep CE 及其 registry 规则按 Semgrep Rules License 的 "internal business purposes"（仅限内部业务使用）条款使用——规则在用户机器上运行时拉取，不随 codespot 打包或分发。**请勿在启用该引擎的状态下对外销售或分发 codespot。**
-
-## 文档
-- [可行性调研报告](docs/feasibility-research.md) — 技术选型、引擎矩阵、路线对比、实现设计与并行迭代计划（2026-09-23，两轮调研）
-- [开源项目验证报告](docs/validation-report.html) — requests / express / jsoup 三仓库实测（2026-09-23）
-- 实施按 OpenSpec 变更分批推进：`openspec/changes/archive/`（M0 基座、M1 JS/TS + Java + 修复循环、M2 深度层、semgrep 与依赖扫描均已交付；实验性 M3/M4 已取消）
+仅限内部使用。引擎运行时从官方源下载、绝不随工具打包分发；Semgrep CE registry 规则按 Semgrep Rules License "internal business purposes" 条款使用，TruffleHog 为 AGPL-3.0——请勿在启用这些引擎的状态下对外销售或分发 codespot。完整英文文档见 [README.md](README.md)。
