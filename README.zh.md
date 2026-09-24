@@ -21,7 +21,10 @@ ln -s <仓库>/skill ~/.agents/skills/codespot
 ~/.agents/skills/codespot/scripts/codespot setup
 
 # 2. 扫描（在任意 git 仓库；scope auto = 未提交 → 未推送 → 全量 自动降级）
+#    AI 语义审查默认随扫描执行：扫描会生成 .codespot/ai-plan.json，
+#    agent 按计划分析并写 ai-result.json 后合并：
 ~/.agents/skills/codespot/scripts/codespot scan --scope auto
+~/.agents/skills/codespot/scripts/codespot ai-scan absorb   # 写完 ai-result.json 后执行
 
 # 3. 查看报告
 cat .codespot/report.md     # 人类可读，codespot 品牌（CS-xxxxx 编号）
@@ -35,6 +38,10 @@ cat .codespot/report.json   # AI agent 用：内部字段（tool/rule/ruleUrl）
 
 引擎下载到 `~/.codespot/engines/`（版本锁定）；报告落在目标仓库的 `.codespot/`——请把 `.codespot/` 加进项目的 `.gitignore`。
 
+### AI 语义审查（默认开启）
+
+每次 `codespot scan` 都会生成 `.codespot/ai-plan.json`——给 AI agent 的审查计划（目标文件、输出 schema、语义审查重点）。agent 针对静态规则抓不到的问题（逻辑错误、并发竞态、错误处理缺口、跨文件不一致）进行分析，写 `.codespot/ai-result.json`（每条带 `confidence`），再执行 `codespot ai-scan absorb` 校验合并进报告（建议性发现，与其他发现同样用 CS 编号）。超过 40 文件 / 5000 行自动分批。对话中说"只扫不审"可单次跳过，或用 `{"rules": {"ai_review": {"disabled": true}}}` 永久关闭。
+
 ## CLI 参考
 
 | 命令 | 用途 |
@@ -43,6 +50,7 @@ cat .codespot/report.json   # AI agent 用：内部字段（tool/rule/ruleUrl）
 | `codespot scope --scope <档位>` | 打印扫描将使用的文件清单 |
 | `codespot scan --scope <档位> [--engine 名称…]` | 运行所有匹配引擎（含显式点名的 opt-in 引擎），写出双报告 |
 | `codespot show [--severity 级别] [--file 前缀] [--rule CS-编号] [--limit N] [--all]` | 浏览最近一次报告的问题详情 |
+| `codespot ai-scan absorb` | 校验并合并 agent 写入的 AI 审查结果（`.codespot/ai-result.json`）到最近报告 |
 | `codespot report` | 打印最近一次 report.json |
 | `codespot update-db` | 下载/刷新本地 OSV 漏洞库（启用离线依赖扫描） |
 | `codespot selftest` | 夹具驱动的全引擎回归自检 |

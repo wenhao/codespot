@@ -21,7 +21,10 @@ ln -s <repo>/skill ~/.agents/skills/codespot
 ~/.agents/skills/codespot/scripts/codespot setup
 
 # 2. Scan (in any git repo; scope auto = uncommitted → unpushed → all)
+#    AI semantic review is part of every scan: it writes .codespot/ai-plan.json;
+#    the agent analyzes per the plan, writes ai-result.json, then merges:
 ~/.agents/skills/codespot/scripts/codespot scan --scope auto
+~/.agents/skills/codespot/scripts/codespot ai-scan absorb   # after writing ai-result.json
 
 # 3. Read the reports
 cat .codespot/report.md     # human-readable, codespot-branded (CS-xxxxx ids)
@@ -35,6 +38,10 @@ cat .codespot/report.json   # agent-facing: internals (tool/rule/ruleUrl) + csId
 
 Engines are downloaded into `~/.codespot/engines/` (version-locked); reports land in the target repo's `.codespot/` — add `.codespot/` to your project's `.gitignore`.
 
+### AI semantic review (default on)
+
+Every `codespot scan` also writes `.codespot/ai-plan.json` — a review plan for the AI agent (target files, output schema, semantic review focus). The agent analyzes the code for issues static rules can't catch (logic errors, concurrency races, error-handling gaps, cross-file inconsistencies), writes `.codespot/ai-result.json` (with `confidence` per finding), then `codespot ai-scan absorb` validates and merges the results into the report (advisory, CS-numbered like any other finding). Batches automatically above 40 files / 5000 lines. Say "只扫不审" to skip once, or disable via `{"rules": {"ai_review": {"disabled": true}}}`.
+
 ## CLI reference
 
 | Command | Purpose |
@@ -43,6 +50,7 @@ Engines are downloaded into `~/.codespot/engines/` (version-locked); reports lan
 | `codespot scope --scope <tier>` | Print the file list a scan would use |
 | `codespot scan --scope <tier> [--engine name…]` | Run all matching engines (plus any explicitly requested opt-in engines), write both reports |
 | `codespot show [--severity s1,s2] [--file prefix] [--rule CS-xxxxx] [--limit N] [--all]` | Browse issue details from the last report |
+| `codespot ai-scan absorb` | Validate & merge agent-written AI review results (`.codespot/ai-result.json`) into the last report |
 | `codespot report` | Print the last report.json |
 | `codespot selftest` | Fixture-based regression across all engines |
 
