@@ -10,10 +10,26 @@ AI agent skill for local static code scanning: detect changed files via git (unc
 
 ## Quick start
 
-**Install as a skill** (everything the user needs lives in `skill/`; docs & openspec stay out of the way):
+**Install as a skill** — everything the user needs lives in `skill/` (docs & openspec stay out of the way). Two ways:
+
+**A. Ask your AI agent (recommended — one sentence)**. In ZCode (or any agent with `~/.agents/skills` discovery), just say:
+
+> 安装 https://github.com/wenhao/codespot.git 中的 skill 并使用 codespot 扫描当前仓库
+
+The agent runs the equivalent of:
 
 ```bash
-ln -s <repo>/skill ~/.agents/skills/codespot
+git clone --depth 1 https://github.com/wenhao/codespot.git ~/.codespot/src/codespot
+ln -s ~/.codespot/src/codespot/skill ~/.agents/skills/codespot   # skill payload only
+~/.agents/skills/codespot/scripts/codespot setup                  # engines, idempotent
+```
+
+then triggers a scan in natural language ("扫一下代码"). Update later with `git -C ~/.codespot/src/codespot pull` + re-run `setup`; uninstall by removing the symlink and `~/.codespot/`.
+
+**B. Manual install**:
+
+```bash
+git clone https://github.com/wenhao/codespot.git && ln -s "$(pwd)/codespot/skill" ~/.agents/skills/codespot
 ```
 
 ```bash

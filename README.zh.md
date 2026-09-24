@@ -10,10 +10,26 @@
 
 ## 安装与快速开始
 
-skill 的可安装载荷全部在 `skill/` 子目录（文档与 openspec 规划文件不进入用户环境）：
+skill 的可安装载荷全部在 `skill/` 子目录（文档与 openspec 规划文件不进入用户环境）。两种安装方式：
+
+**方式 A：让 AI agent 自动安装（推荐——只需一句话）**。在 ZCode（或任何支持 `~/.agents/skills` 发现机制的 agent）里直接说：
+
+> 安装 https://github.com/wenhao/codespot.git 中的 skill 并使用 codespot 扫描当前仓库
+
+agent 会执行等价于下面的命令：
 
 ```bash
-ln -s <仓库>/skill ~/.agents/skills/codespot
+git clone --depth 1 https://github.com/wenhao/codespot.git ~/.codespot/src/codespot
+ln -s ~/.codespot/src/codespot/skill ~/.agents/skills/codespot   # 仅软链 skill 载荷
+~/.agents/skills/codespot/scripts/codespot setup                  # 引擎安装（幂等）
+```
+
+随后用自然语言（"扫一下代码"）即可触发扫描。升级：`git -C ~/.codespot/src/codespot pull` 后重跑 `setup`；卸载：删除软链与 `~/.codespot/`。
+
+**方式 B：手动安装**：
+
+```bash
+git clone https://github.com/wenhao/codespot.git && ln -s "$(pwd)/codespot/skill" ~/.agents/skills/codespot
 ```
 
 ```bash
