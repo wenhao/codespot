@@ -156,6 +156,22 @@ Three layers, highest priority first:
 2. **`.codespot/config.json`** — category switches (`disabled` / `ignore` / `enabled`), SQL `dialect`, `semgrep_config`. Categories: `secrets`, `python_lint`, `python_security`, `js_lint`, `java`, `sql`, `semantic`, `dependencies`, `secrets_deep`, `ai_review`.
 3. **Built-in defaults** in `skill/assets/`.
 
+### Exclusions (`.codespotignore`)
+
+A `.codespotignore` file at the repo root excludes files/folders from every scan scope, using gitignore-subset syntax — one pattern per line, `#` comments, trailing `/` for directories only, patterns containing `/` anchored to the repo root (otherwise matching at any depth), `*` / `?` / `**` wildcards, and `!` negation where the last matching pattern wins:
+
+```gitignore
+# generated artifacts
+*.log
+dist/
+docs/generated/**
+
+# keep this one
+!keep.log
+```
+
+Built-in excludes always apply and cannot be re-included with `!`: `.git/`, `.codespot/`, `.codespotignore`, `node_modules/`, `vendor/`, `dist/`, `build/`, binary files.
+
 Severity tuning: `.codespot/severity-overrides.json` (`{"ruff": {"rules": {"RUF100": "info"}}}`). One-off false positives: `.codespot/ignore` (`[{"tool": "ruff", "file": "src/app.py", "rule": "PLW0603"}]`); secrets use `.gitleaksignore` fingerprints.
 
 ## Vulnerability DB & engine updates

@@ -156,6 +156,22 @@ git clone https://github.com/wenhao/codespot.git && ln -s "$(pwd)/codespot/skill
 2. **`.codespot/config.json`** —— 类别开关（`disabled` / `ignore` / `enabled`）、SQL `dialect`、`semgrep_config`。类别：`secrets`、`python_lint`、`python_security`、`js_lint`、`java`、`sql`、`semantic`、`dependencies`、`secrets_deep`、`ai_review`。
 3. **内置默认** —— 位于 `skill/assets/`。
 
+### 排除（`.codespotignore`）
+
+仓库根的 `.codespotignore` 文件可从所有扫描档位排除文件/目录，语法为 gitignore 子集——逐行一个模式、`#` 注释、尾 `/` 仅目录、含 `/` 的模式锚定仓库根（否则匹配任意层级）、`*` / `?` / `**` 通配、`!` 反选（后行胜出）：
+
+```gitignore
+# 生成物
+*.log
+dist/
+docs/generated/**
+
+# 保留这一个
+!keep.log
+```
+
+内置排除始终生效且不可被 `!` 反选：`.git/`、`.codespot/`、`.codespotignore`、`node_modules/`、`vendor/`、`dist/`、`build/`、二进制文件。
+
 严重级调整：`.codespot/severity-overrides.json`（`{"ruff": {"rules": {"RUF100": "info"}}}`）。单条误报：`.codespot/ignore`（`[{"tool": "ruff", "file": "src/app.py", "rule": "PLW0603"}]`）；密钥误报用 `.gitleaksignore` 指纹。
 
 ## 漏洞库与引擎更新

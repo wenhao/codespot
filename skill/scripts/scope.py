@@ -23,6 +23,85 @@ SUPPORTED_LANGS = {
 }
 
 EXCLUDED_DIRS = (".git/", ".codespot/", "node_modules/", "vendor/", "dist/", "build/")
+EXCLUDED_FILES = (".codespotignore",)
+
+
+# ---------------- .codespotignore (gitignore-subset matcher) ----------------
+
+import re as _re
+
+
+def _load_user_patterns(root):
+    """Read .codespotignore -> compiled [(negated, regex), ...] in file order."""
+    path = os.path.join(root, ".codespotignore")
+    out = []
+    if os.path.isfile(path):
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                lines = f.read().splitlines()
+        except OSError:
+            return out
+        for line in lines:
+            pat = line.strip()
+            if not pat or pat.startswith("#"):
+                continue
+            out.append(_compile_pattern(pat))
+    return out
+
+
+def _translate(pat):
+    """gitignore-style glob -> regex fragment: ** -> .*, * -> [^/]*, ? -> [^/]."""
+    out, i = [], 0
+    while i < len(pat):
+        c = pat[i]
+        if pat[i:i + 2] == "**":
+            out.append(".*")
+            i += 2
+        elif c == "*":
+            out.append("[^/]*")
+            i += 1
+        elif c == "?":
+            out.append("[^/]")
+            i += 1
+        else:
+            out.append(_re.escape(c))
+            i += 1
+    return "".join(out)
+
+
+def _compile_pattern(raw):
+    neg = raw.startswith("!")
+    pat = raw[1:].strip() if neg else raw
+    anchored = "/" in pat.rstrip("/")
+    pat = pat.strip("/")
+    t = _translate(pat)
+    regex = ("^" + t + "(/|$)") if anchored else ("(^|/)" + t + "(/|$)")
+    return (neg, _re.compile(regex))
+
+
+def _user_ignored(rel_path, patterns):
+    """Last matching pattern wins (gitignore semantics)."""
+    ignored = False
+    for neg, rx in patterns:
+        if rx.search(rel_path):
+            ignored = not neg
+    return ignored
+
+
+def _apply_excludes(root, files):
+    """Built-in excludes (not overridable) + user .codespotignore patterns."""
+    patterns = _load_user_patterns(root)
+    kept = []
+    for f in files:
+        p = f.replace(os.sep, "/")
+        if any(p.startswith(d) or "/" + d in "/" + p for d in EXCLUDED_DIRS):
+            continue
+        if os.path.basename(p) in EXCLUDED_FILES:
+            continue
+        if patterns and _user_ignored(p, patterns):
+            continue
+        kept.append(f)
+    return kept
 
 
 def git(root, *args):
@@ -104,7 +183,7 @@ def _all(root):
     return _clean_paths(root, names)
 
 
-def compute(root, scope):
+def _compute_raw(root, scope):
     if scope == "auto":
         for tier in ("uncommitted", "unpushed", "all"):
             try:
@@ -129,6 +208,12 @@ def compute(root, scope):
     if scope == "all":
         return _all(root), scope
     raise RuntimeError("unknown scope: %s" % scope)
+
+
+def compute(root, scope):
+    """Tier calculation + exclusion filtering (built-ins + .codespotignore)."""
+    files, effective = _compute_raw(root, scope)
+    return _apply_excludes(root, files), effective
 
 
 def main(argv=None):
