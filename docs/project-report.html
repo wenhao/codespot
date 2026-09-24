@@ -224,7 +224,7 @@
   <tr><td>①</td><td><b>技能即插即用</b></td><td>标准 skill 目录，软链到 <code>~/.agents/skills/</code> 即被 ZCode 等 Agent 框架自动发现；自然语言（"扫一下代码 / 静态检查 / 有没有密钥泄漏"）自动触发</td></tr>
   <tr><td>②</td><td><b>Agent 专属接口</b></td><td><code>report.json</code> 保留 tool/rule/ruleUrl/fixHint 完整字段供 AI 精确研究与修复；密钥强制脱敏防二次泄漏</td></tr>
   <tr><td>③</td><td><b>交互修复闭环</b></td><td>修复选项结构化问答；修复循环（判断合理性→修复→重扫→汇总）由 SKILL.md 编排</td></tr>
-  <tr><td>④</td><td><b>AI 即引擎（首创）</b></td><td><code>--engine ai</code> 产出审查计划，Agent 本身作为第 10 个引擎执行语义级审查，结果经校验合并进统一报告</td></tr>
+  <tr><td>④</td><td><b>AI 即引擎（首创）</b></td><td>每次扫描自动产出审查计划，Agent 本身作为第 10 个引擎执行语义级审查，结果经校验合并进统一报告</td></tr>
   <tr><td>⑤</td><td><b>误报治理</b></td><td>Agent 判定误报可登记白名单（<code>.codespot/ignore</code> / <code>.gitleaksignore</code>），下次自动过滤</td></tr>
   <tr><td>⑥</td><td><b>零服务器</b></td><td>纯本地 CLI，无需部署服务端与账号，任何 git 仓库即调即用</td></tr>
 </table>
@@ -286,8 +286,8 @@
     <li>覆盖 requirements / package-lock / pom / go.mod / Cargo 等</li>
     <li>每条附<b>升级目标版本</b>（如 pymysql → 1.1.1）可直接执行</li>
   </ul></div>
-  <div class="card feat hot"><span class="kicker">AI NATIVE · 首创</span><h4>🤖 AI 语义审查</h4><ul>
-    <li><code>scan --engine ai</code> 生成审查计划（文件+schema+8 项语义重点）</li>
+  <div class="card feat hot"><span class="kicker">AI NATIVE · 首创 · 默认开启</span><h4>🤖 AI 语义审查</h4><ul>
+    <li>每次扫描自动生成审查计划（文件+schema+8 项语义重点）</li>
     <li>Agent 审查静态规则抓不到的<b>逻辑/并发/错误处理/跨文件一致</b></li>
     <li>结果带 confidence 经校验合并进统一报告</li>
     <li><b>工具规则 + AI 语义双引擎互补</b></li>
@@ -313,12 +313,12 @@
 "扫一下我刚生成的代码"  →  扫描 → 修复选项 → Agent 修复 → 重扫验证 → 汇总
 
 <span class="c"># 方式二：直接 CLI</span>
-codespot <span class="d">scan --scope auto</span>                 <span class="c"># 增量扫描（未提交→未推送→全量自动降级）</span>
+codespot <span class="d">scan --scope auto</span>                 <span class="c"># 增量扫描 + 默认 AI 审查（未提交→未推送→全量自动降级）</span>
 codespot <span class="d">show --severity critical,major</span>    <span class="c"># 浏览问题详情（CS 编号，无引擎名）</span>
 <span class="o">cat .codespot/report.md                    # 人读报告；report.json 为 Agent 接口</span></div>
 <p><b>进阶能力</b>：</p>
 <div class="code">codespot <span class="d">scan --engine trufflehog</span>   <span class="c"># 点名启用深度密钥检测（opt-in，默认不跑）</span>
-codespot <span class="d">scan --engine ai</span>           <span class="c"># AI 语义审查：计划 → Agent 分析 → ai-scan absorb</span>
+codespot <span class="d">scan</span>                      <span class="c"># AI 语义审查默认随扫描执行（计划 → 分析 → absorb）</span>
 codespot <span class="d">update-db</span>                  <span class="c"># 下载 OSV 离线漏洞库（此后断网可用）</span>
 codespot <span class="d">selftest</span>                   <span class="c"># 10 引擎 × 夹具回归自检</span></div>
 <p><b>项目级规则配置</b>（<code>.codespot/config.json</code>，按检查类别、无需知晓引擎名）：</p>

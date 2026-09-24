@@ -107,7 +107,7 @@ sequenceDiagram
 | ① | **技能即插即用** | 标准 skill 目录结构，软链到 `~/.agents/skills/` 即被 ZCode 等 Agent 框架自动发现，自然语言（"扫一下代码/静态检查/有没有密钥泄漏"）自动触发 |
 | ② | **Agent 专属接口** | `report.json` 保留 tool/rule/ruleUrl/fixHint 完整字段供 AI 精确研究与修复；密钥强制脱敏防二次泄漏 |
 | ③ | **交互闭环** | 修复选项经结构化问答呈现；修复循环（判断合理性→修复→重扫≤3轮→三类汇总）由 SKILL.md 编排 |
-| ④ | **AI 即引擎（首创）** | `--engine ai` 产出审查计划，Agent 本身作为第 10 个引擎执行语义级审查，结果经校验合并进统一报告 |
+| ④ | **AI 即引擎（首创）** | 每次扫描自动产出审查计划，Agent 本身作为第 10 个引擎执行语义级审查，结果经校验合并进统一报告 |
 | ⑤ | **误报治理** | Agent 判断为误报的发现可登记白名单（`.codespot/ignore` / `.gitleaksignore`），下次扫描自动过滤 |
 | ⑥ | **零服务器** | 纯本地 CLI，无需部署服务端、无需账号，Agent 在任何 git 仓库内即调即用 |
 
@@ -163,7 +163,7 @@ mindmap
 
 **📦 依赖漏洞（SCA）**——OSV-Scanner 查询 Google OSV 漏洞库；`update-db` 一键下载离线库后断网可用；每条发现附**升级目标版本**（如 "pymysql → 1.1.1"），可直接执行。
 
-**🤖 AI 语义审查（首创）**——`scan --engine ai` 生成审查计划（目标文件+schema+8 项语义审查重点），Agent 按计划审查静态规则抓不到的问题，结果带 confidence 经校验合并：**工具规则 + AI 语义双引擎**，直接补齐"仅 AI 扫描不全面"的短板。
+**🤖 AI 语义审查（首创）**——每次扫描自动生成审查计划（目标文件+schema+8 项语义审查重点），Agent 按计划审查静态规则抓不到的问题，结果带 confidence 经校验合并：**工具规则 + AI 语义双引擎**，直接补齐"仅 AI 扫描不全面"的短板。
 
 ### 4.4 使用方式（摘自 README）
 
@@ -190,7 +190,7 @@ cat .codespot/report.md                    # 人读报告；report.json 为 Agen
 
 ```bash
 codespot scan --engine trufflehog   # 点名启用深度密钥检测（opt-in，默认不跑）
-codespot scan --engine ai           # AI 语义审查：计划 → Agent 分析 → ai-scan absorb
+codespot scan                       # AI 语义审查默认随扫描执行（计划 → 分析 → absorb）
 codespot update-db                  # 下载 OSV 离线漏洞库（此后断网可用）
 codespot selftest                   # 10 引擎 × 夹具回归自检
 ```

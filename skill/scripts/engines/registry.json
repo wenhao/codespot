@@ -309,8 +309,7 @@
       "languages": [
         "*"
       ],
-      "always_on": false,
-      "opt_in": true,
+      "always_on": true,
       "agent_driven": true,
       "required": false,
       "runtime": "agent",

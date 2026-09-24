@@ -47,7 +47,7 @@ cat .codespot/report.json   # AI agent 用：内部字段（tool/rule/ruleUrl）
 | `codespot update-db` | 下载/刷新本地 OSV 漏洞库（启用离线依赖扫描） |
 | `codespot selftest` | 夹具驱动的全引擎回归自检 |
 
-**opt-in 引擎**：registry 中标记 `opt_in` 的引擎（当前为 TruffleHog）默认绝不运行——用可重复的 `--engine <名称>` 显式点名，或通过 `.codespot/config.json` 永久启用：`{"rules": {"secrets_deep": {"enabled": true}}}`。
+**opt-in 引擎**：registry 中标记 `opt_in` 的引擎（当前为 TruffleHog）默认绝不运行——用可重复的 `--engine <名称>` 显式点名，或通过 `.codespot/config.json` 永久启用：`{"rules": {"secrets_deep": {"enabled": true}}}`。与之相反，**AI 语义审查默认随每次扫描执行**，关闭用 `{"rules": {"ai_review": {"disabled": true}}}`。
 
 **扫描范围**（`--scope`）：`auto`（默认：未提交 → 未推送 → 全量取第一个非空）、`uncommitted`（含未跟踪文件）、`unpushed`（无上游分支时回退与 `main` 比较）、`ref:<ref>`、`all`。
 
@@ -68,7 +68,7 @@ cat .codespot/report.json   # AI agent 用：内部字段（tool/rule/ruleUrl）
 | `semantic` | Semgrep CE 1.177（py3.9 回退 1.136） | python3（独立 venv） | Go/C#/Kotlin/Ruby/PHP/Rust/Terraform…；规则从官方 registry 拉取 |
 | `dependencies` | OSV-Scanner 2.6 | —（查询 osv.dev） | 扫描 requirements/锁文件/pom/go.mod 的已知 CVE |
 | `secrets_deep`（**opt-in**） | TruffleHog 3.97 | — | 800+ 检测器；默认 `--no-verification`（纯本地）；仅 `--engine trufflehog` 或 `rules.secrets_deep.enabled` 时运行 |
-| `ai_review`（**opt-in**，agent 驱动） | AI agent 本身 | — | 语义级审查（逻辑/并发/错误处理缺口）；`scan --engine ai` → 按 `.codespot/ai-plan.json` 分析 → `codespot ai-scan absorb`；发现为建议性并附 confidence |
+| `ai_review`（**默认开启**，agent 驱动） | AI agent 本身 | — | 语义级审查（逻辑/并发/错误处理缺口）；每次扫描生成 `.codespot/ai-plan.json` → 分析 → `codespot ai-scan absorb`；`rules.ai_review.disabled` 可关；发现为建议性并附 confidence |
 
 ## 各语言规则数量与去重
 

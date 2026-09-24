@@ -46,7 +46,7 @@ Engines are downloaded into `~/.codespot/engines/` (version-locked); reports lan
 | `codespot report` | Print the last report.json |
 | `codespot selftest` | Fixture-based regression across all engines |
 
-**Opt-in engines**: registry entries marked `opt_in` (currently TruffleHog) never run by default — request them with a repeatable `--engine <name>` flag, or enable permanently via `.codespot/config.json`: `{"rules": {"secrets_deep": {"enabled": true}}}`.
+**Opt-in engines**: registry entries marked `opt_in` (currently TruffleHog) never run by default — request them with a repeatable `--engine <name>` flag, or enable permanently via `.codespot/config.json`: `{"rules": {"secrets_deep": {"enabled": true}}}`. The AI review engine, by contrast, runs with every scan; turn it off via `{"rules": {"ai_review": {"disabled": true}}}`.
 
 **Scan scopes** (`--scope`): `auto` (default: first non-empty of uncommitted → unpushed → all), `uncommitted` (includes untracked), `unpushed` (falls back to `main` if no upstream), `ref:<ref>`, `all`.
 
@@ -67,7 +67,7 @@ Engines are downloaded into `~/.codespot/engines/` (version-locked); reports lan
 | `semantic` | Semgrep CE 1.177 (fallback 1.136 on py3.9) | python3 (venv) | Go/C#/Kotlin/Ruby/PHP/Rust/Terraform…; rules fetched from official registry |
 | `dependencies` | OSV-Scanner 2.6 | — (queries osv.dev) | scans requirements/lockfiles/pom/go.mod for known CVEs |
 | `secrets_deep` (**opt-in**) | TruffleHog 3.97 | — | 800+ detectors; `--no-verification` by default (fully local); runs only via `--engine trufflehog` or `rules.secrets_deep.enabled` |
-| `ai_review` (**opt-in**, agent-driven) | the AI agent itself | — | semantic review (logic/concurrency/error-handling gaps); `scan --engine ai` → analyze per `.codespot/ai-plan.json` → `codespot ai-scan absorb`; findings are advisory with confidence |
+| `ai_review` (**on by default**, agent-driven) | the AI agent itself | — | semantic review (logic/concurrency/error-handling gaps); every scan writes `.codespot/ai-plan.json` → analyze → `codespot ai-scan absorb`; disable via `rules.ai_review.disabled`; findings are advisory with confidence |
 
 ### Rules per language — counts & de-duplication
 
