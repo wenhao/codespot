@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="mark" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#3D9E92"/>
+      <stop offset="0.55" stop-color="#4E88B8"/>
+      <stop offset="1" stop-color="#5D68AD"/>
+    </linearGradient>
+    <radialGradient id="spotGlow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#D9A441" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#D9A441" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- code chevrons -->
+  <g fill="none" stroke="url(#mark)" stroke-width="36" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="192,168 104,256 192,344"/>
+    <polyline points="320,168 408,256 320,344"/>
+  </g>
+
+  <!-- the spot -->
+  <circle cx="256" cy="256" r="52" fill="url(#spotGlow)"/>
+  <circle cx="256" cy="256" r="28" fill="#D9A441"/>
+</svg>

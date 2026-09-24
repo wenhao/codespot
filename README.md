@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="docs/assets/logo.svg" width="96" alt="codespot logo"/>
+
 # codespot
 
 **Local multi-engine static code scanning, built for AI coding agents.**
@@ -197,11 +199,18 @@ codespot/
 │   │   ├── scope.py              # git scope calculation
 │   │   ├── setup_engine.py       # installer (binary/zip/npm/venv/raw)
 │   │   ├── rules-severity.json   # severity mapping
-│   │   └── engines/              # adapters + registry.json
-│   ├── assets/                   # default engine configs
-│   └── tests/fixtures/           # selftest fixtures + expectations
-├── docs/                         # research & reports (not part of the skill)
-└── openspec/                     # spec-driven change history (archived)
+│   │   └── engines/              # common.py + engine_*.py adapters + registry.json
+│   ├── assets/                   # default engine configs (ruff / oxlint / eslint / pmd)
+│   └── tests/fixtures/           # selftest fixtures + expected.json
+├── docs/                         # research, reports & branding (not part of the skill)
+│   ├── feasibility-research.md   # feasibility study
+│   ├── project-report.md / .html # project report
+│   ├── validation-report.html    # validation report
+│   └── assets/logo.svg           # product logo
+└── openspec/                     # spec-driven development history
+    ├── config.yaml               # openspec configuration
+    ├── specs/                    # capability specs (one dir per capability)
+    └── changes/archive/          # archived change proposals (proposal / design / tasks / specs)
 ```
 
 ## Offline & platform notes

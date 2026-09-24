@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="docs/assets/logo.svg" width="96" alt="codespot logo"/>
+
 # codespot（中文说明）
 
 **为 AI 编码 agent 而生的本地多引擎静态代码扫描。**
@@ -197,11 +199,18 @@ codespot/
 │   │   ├── scope.py              # git 范围计算
 │   │   ├── setup_engine.py       # 安装器（binary/zip/npm/venv/raw）
 │   │   ├── rules-severity.json   # severity 映射
-│   │   └── engines/              # 适配器 + registry.json
-│   ├── assets/                   # 引擎默认配置
-│   └── tests/fixtures/           # selftest 夹具与预期
-├── docs/                         # 调研与报告（不属于 skill）
-└── openspec/                     # 规格驱动变更历史（归档）
+│   │   └── engines/              # common.py + engine_*.py 适配器 + registry.json
+│   ├── assets/                   # 引擎默认配置（ruff / oxlint / eslint / pmd）
+│   └── tests/fixtures/           # selftest 夹具与 expected.json
+├── docs/                         # 调研、报告与品牌资产（不属于 skill）
+│   ├── feasibility-research.md   # 可行性调研
+│   ├── project-report.md / .html # 项目汇报
+│   ├── validation-report.html    # 验证报告
+│   └── assets/logo.svg           # 产品 logo
+└── openspec/                     # 规格驱动开发历史
+    ├── config.yaml               # openspec 配置
+    ├── specs/                    # 能力规格（每个能力一个目录）
+    └── changes/archive/          # 归档变更提案（proposal / design / tasks / specs）
 ```
 
 ## 离线与平台说明
