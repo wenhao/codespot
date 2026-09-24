@@ -14,7 +14,7 @@ AI agent skill for local static code scanning: detect changed files via git (unc
 
 **A. Ask your AI agent (recommended — one sentence)**. In ZCode (or any agent with `~/.agents/skills` discovery), just say:
 
-> 安装 https://github.com/wenhao/codespot.git 中的 skill 并使用 codespot 扫描当前仓库
+> Install the skill from https://github.com/wenhao/codespot.git and scan this repo with codespot
 
 The agent runs the equivalent of:
 
@@ -24,7 +24,7 @@ ln -s ~/.codespot/src/codespot/skill ~/.agents/skills/codespot   # skill payload
 ~/.agents/skills/codespot/scripts/codespot setup                  # engines, idempotent
 ```
 
-then triggers a scan in natural language ("扫一下代码"). Update later with `git -C ~/.codespot/src/codespot pull` + re-run `setup`; uninstall by removing the symlink and `~/.codespot/`.
+then triggers a scan in natural language ("scan my code" — works in any language). Update later with `git -C ~/.codespot/src/codespot pull` + re-run `setup`; uninstall by removing the symlink and `~/.codespot/`.
 
 **B. Manual install**:
 
@@ -56,7 +56,7 @@ Engines are downloaded into `~/.codespot/engines/` (version-locked); reports lan
 
 ### AI semantic review (default on)
 
-Every `codespot scan` also writes `.codespot/ai-plan.json` — a review plan for the AI agent (target files, output schema, semantic review focus). The agent analyzes the code for issues static rules can't catch (logic errors, concurrency races, error-handling gaps, cross-file inconsistencies), writes `.codespot/ai-result.json` (with `confidence` per finding), then `codespot ai-scan absorb` validates and merges the results into the report (advisory, CS-numbered like any other finding). Batches automatically above 40 files / 5000 lines. Say "只扫不审" to skip once, or disable via `{"rules": {"ai_review": {"disabled": true}}}`.
+Every `codespot scan` also writes `.codespot/ai-plan.json` — a review plan for the AI agent (target files, output schema, semantic review focus). The agent analyzes the code for issues static rules can't catch (logic errors, concurrency races, error-handling gaps, cross-file inconsistencies), writes `.codespot/ai-result.json` (with `confidence` per finding), then `codespot ai-scan absorb` validates and merges the results into the report (advisory, CS-numbered like any other finding). Batches automatically above 40 files / 5000 lines. Say "scan only, skip the AI review" to skip once, or disable via `{"rules": {"ai_review": {"disabled": true}}}`.
 
 ## CLI reference
 
@@ -213,3 +213,16 @@ Engines are self-contained adapters. To add one:
 ## License boundary
 
 codespot is an internal tool. Semgrep CE and its registry rules are used under the Semgrep Rules License "internal business purposes" only — rules are fetched at runtime on the user's machine and are not bundled with or distributed by codespot. Do not sell or externally distribute codespot with this engine enabled.
+
+## Windows & offline notes
+
+- **Windows**: works except Semgrep (needs WSL2/Docker) plus small registry/wrapper additions; validated on macOS/Linux. Details in the [Chinese README](README.zh.md) platform-compatibility section.
+- **Offline usage**: run `codespot setup` and `codespot update-db` once while online — afterwards everything except Semgrep (rule-cache dependent) works fully offline. See the [Chinese README](README.zh.md) offline guide.
+
+## Documentation
+
+- [Project report (HTML, illustrated)](docs/project-report.html) / [Project report (Markdown)](docs/project-report.md) — leadership-ready summary: background, design, features, investment, validation, ROI
+- [Feasibility research](docs/feasibility-research.md) — engine selection, route comparison, implementation design and iteration plan (two research rounds, 2026-09-23)
+- [Validation report (HTML)](docs/validation-report.html) — real-world scans of requests / express / jsoup
+- [中文文档](README.zh.md) — full Simplified-Chinese edition of this README
+- Implementation is tracked as archived OpenSpec changes under `openspec/changes/archive/` (base, JS/TS + Java + fix loop, deep layers, semgrep, branding/config, dependency scanning, TruffleHog opt-in, AI review, AI-by-default)
