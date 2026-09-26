@@ -59,6 +59,16 @@ ln -s ~/.codespot/src/codespot/skill ~/.agents/skills/codespot   # 仅软链 ski
 ~/.agents/skills/codespot/scripts/codespot setup                  # 引擎安装（幂等）
 ```
 
+skill 载荷是跨 agent 通用的 `SKILL.md` 格式——**一次克隆可同时服务多个 agent**。把它软链到各 agent 的 skills 目录，`setup` 跑一次即可：
+
+| Agent | skills 目录 | 软链命令 |
+|---|---|---|
+| ZCode / 通用 agent | `~/.agents/skills` | `ln -s ~/.codespot/src/codespot/skill ~/.agents/skills/codespot` |
+| Claude Code | `~/.claude/skills` | `ln -s ~/.codespot/src/codespot/skill ~/.claude/skills/codespot` |
+| Codex CLI | `~/.codex/skills` | `ln -s ~/.codespot/src/codespot/skill ~/.codex/skills/codespot` |
+
+软链后对 agent 说"用 codespot 扫一下代码"即可（支持显式调用 skill 的 agent 也可用 `/codespot`）。也支持项目级安装：把软链放进仓库内的 `.agents/skills/`、`.claude/skills/` 或 `.codex/skills/` 而非用户主目录。
+
 ### 2. 跑第一次扫描
 
 自然语言触发（"扫一下代码"），或直接 CLI：

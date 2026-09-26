@@ -59,6 +59,16 @@ ln -s ~/.codespot/src/codespot/skill ~/.agents/skills/codespot   # skill payload
 ~/.agents/skills/codespot/scripts/codespot setup                  # engines, idempotent
 ```
 
+The skill payload is the cross-agent `SKILL.md` format — one clone serves multiple agents. Symlink it into each agent's skills directory and run `setup` once:
+
+| Agent | Skills directory | Symlink command |
+|---|---|---|
+| ZCode / generic agents | `~/.agents/skills` | `ln -s ~/.codespot/src/codespot/skill ~/.agents/skills/codespot` |
+| Claude Code | `~/.claude/skills` | `ln -s ~/.codespot/src/codespot/skill ~/.claude/skills/codespot` |
+| Codex CLI | `~/.codex/skills` | `ln -s ~/.codespot/src/codespot/skill ~/.codex/skills/codespot` |
+
+After symlinking, ask the agent to "scan my code with codespot" (or invoke `/codespot` where the agent supports explicit skill calls). Project-level installs work too: drop the symlink into `.agents/skills/`, `.claude/skills/` or `.codex/skills/` inside a repo instead of the home directory.
+
 ### 2. Run your first scan
 
 Trigger it in natural language ("scan my code"), or run the CLI:
