@@ -49,9 +49,7 @@
 
 ### Requirement: setup 幂等安装
 
-setup SHALL 支持第四种安装形态 `raw_binary`：直接下载单文件二进制（URL 直链 release 资产，按 os/arch 映射；Windows 下目标文件带 `.exe` 后缀）到 `~/.codespot/engines/<name>-<version>/` 并加执行位（Windows 为空操作）；幂等与失败清理语义不变。
-
-Windows 安装语义：① venv 形态在 Windows 用 `python`（无则失败得体）且 venv 工具位于 `Scripts\` 而非 `bin/`；② wrapper 形态（PMD/SpotBugs）在 Windows 直接采用发行包自带 `bin\<name>.bat`，不生成 shell 包装；③ 各安装形态的二进制解析 SHALL 统一支持 `name`/`name.exe` 后缀差异。
+setup SHALL 支持第五种安装形态来源 `--offline-dir <dir>`：venv 引擎安装改用 `pip install --no-index --find-links <dir>/wheels/<py大版本>`（离线 wheel 解析，含全部传递依赖）；平台二进制/raw/npm 形态在 offline-dir 就位时依赖 `engines/` 预置内容（跳过下载）。幂等与失败清理语义不变。
 
 #### Scenario: 直链二进制安装
 
@@ -77,6 +75,11 @@ Windows 安装语义：① venv 形态在 Windows 用 `python`（无则失败得
 
 - **WHEN** 任一形态的安装中途失败
 - **THEN** `~/.codespot/engines/` 下不残留该引擎的不完整目录，stderr 给出重试提示
+
+#### Scenario: 离线 wheel 安装
+
+- **WHEN** 携带离线包的 `--offline-dir` 执行 setup（venv 引擎）
+- **THEN** pip 以 `--no-index` 从 wheels 目录完成安装，无任何网络请求
 
 #### Scenario: Windows venv 工具路径
 
