@@ -12,6 +12,8 @@ import shutil
 import subprocess
 import sys
 
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import setup_engine as _se  # noqa: E402
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from common import fail, make_issue, read_file_list, write_result  # noqa: E402
 
@@ -25,12 +27,7 @@ RULE_URL = "https://docs.astral.sh/ruff/rules/{rule}/"
 
 
 def find_binary():
-    import glob
-    home = os.path.expanduser("~/.codespot/engines")
-    hits = sorted(glob.glob(os.path.join(home, "ruff-*", "ruff")))
-    if hits:
-        return hits[-1]
-    return shutil.which("ruff")
+    return _se.resolve_engine_cmd("ruff") or shutil.which("ruff")
 
 
 def _pyproject_has_ruff(workdir):

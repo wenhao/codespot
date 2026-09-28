@@ -1,12 +1,15 @@
 """Engine download/setup helpers for codespot (idempotent, version-locked).
 
-Supports three install forms (registry.json):
-  - platform tarball (download.url + os_map/arch_map/ext_map)
-  - zip dist with layout wrapper (e.g. PMD: launcher needs its lib tree,
-    so we extract everything and write a wrapper script dest/<name>)
-  - npm project (install: "npm", npm_deps locked versions)
+Install forms (registry.json), all Windows-aware:
+  - platform tarball/zip (download.url + os_map/arch_map/ext_map)
+  - raw single-file binary (raw_binary; ".exe" suffix on Windows)
+  - zip dist with layout wrapper (PMD/SpotBugs: launcher needs its lib tree;
+    unix gets an sh wrapper, Windows points at the bundled .bat via a shim)
+  - npm project (install: "npm") / python venv (install: "venv"; on Windows
+    tools live under Scripts\\ and "python" is preferred over "python3")
 """
 
+import glob
 import json
 import os
 import platform
@@ -20,6 +23,28 @@ import urllib.request
 import zipfile
 
 ENGINES_DIR = os.path.expanduser("~/.codespot/engines")
+IS_WINDOWS = platform.system() == "Windows"
+
+
+def _exe_variants(base):
+    return [base + ".exe", base + ".bat", base] if IS_WINDOWS else [base]
+
+
+def resolve_engine_cmd(name, inner_paths=("bin/%s", "Scripts/%s")):
+    """Locate an installed engine's executable across platform layouts:
+    <engines>/<name>-*/<name>[.exe|.bat] plus venv-style inner paths
+    (bin/ on unix, Scripts\\ on Windows). Returns the newest match or None."""
+    hits = []
+    for d in sorted(glob.glob(os.path.join(ENGINES_DIR, name + "-*"))):
+        cands = [os.path.join(d, name)]
+        for tpl in inner_paths:
+            cands.append(os.path.join(d, tpl % name))
+        for c in cands:
+            hit = next((v for v in _exe_variants(c) if os.path.isfile(v)), None)
+            if hit:
+                hits.append(hit)
+                break
+    return hits[-1] if hits else None
 
 
 def registry_path():
@@ -31,6 +56,11 @@ def load_registry():
         return json.load(f)["engines"]
 
 
+def platform_supported(spec):
+    allowed = spec.get("platforms")
+    return not allowed or platform.system().lower() in allowed
+
+
 def engine_bin_dir(name, version):
     return os.path.join(ENGINES_DIR, "%s-%s" % (name, version))
 
@@ -40,12 +70,13 @@ def engine_binary(name, version):
     d = engine_bin_dir(name, version)
     if not os.path.isfile(os.path.join(d, ".ok")):
         return None
-    exe = os.path.join(d, name)
-    if os.path.isfile(exe):
-        return exe
-    for inner in (os.path.join(d, "bin", name),):
-        if os.path.isfile(inner):
-            return inner
+    for v in _exe_variants(os.path.join(d, name)):
+        if os.path.isfile(v):
+            return v
+    for inner in (os.path.join(d, "bin", name), os.path.join(d, "Scripts", name)):
+        for v in _exe_variants(inner):
+            if os.path.isfile(v):
+                return v
     # npm-form engines have no binary; presence of .ok is the contract
     return d if os.path.isdir(os.path.join(d, "node_modules")) else None
 
@@ -66,7 +97,14 @@ def _extract(archive, dest):
 
 
 def _write_wrapper(dest_dir, name, inner):
-    """Write dest/<name> shell wrapper exec'ing dest/<inner> (relative layout kept)."""
+    """Unix: dest/<name> sh wrapper. Windows: dest/<name>.bat shim calling the
+    bundled launcher (CreateProcess also runs .bat directly, the shim just
+    keeps a stable top-level path)."""
+    if IS_WINDOWS:
+        exe = os.path.join(dest_dir, name + ".bat")
+        with open(exe, "w") as f:
+            f.write('@call "%%~dp0%s" %%*\n' % inner.replace("/", "\\"))
+        return exe
     exe = os.path.join(dest_dir, name)
     with open(exe, "w") as f:
         f.write("#!/bin/sh\nexec \"$(dirname \"$0\")/%s\" \"$@\"\n" % inner)
@@ -77,6 +115,8 @@ def _write_wrapper(dest_dir, name, inner):
 def setup_engine(spec):
     """Install one engine. Returns binary path (or engine dir). Raises RuntimeError."""
     name, version = spec["name"], spec["version"]
+    if not platform_supported(spec):
+        raise RuntimeError("%s does not support this platform (%s)" % (name, platform.system()))
     exe = engine_binary(name, version)
     if exe:
         print("setup: %s-%s already installed (%s)" % (name, version, exe))
@@ -119,10 +159,11 @@ def _setup_binary(spec, dest_dir):
     tmpd = tempfile.mkdtemp(prefix="codespot-dl-")
     try:
         if spec.get("raw_binary"):
-            exe = os.path.join(dest_dir, name)
+            exe = os.path.join(dest_dir, name + (".exe" if IS_WINDOWS else ""))
             print("setup: downloading %s %s from %s" % (name, version, url))
             _download(url, exe)
-            os.chmod(exe, os.stat(exe).st_mode | stat.S_IEXEC)
+            if not IS_WINDOWS:
+                os.chmod(exe, os.stat(exe).st_mode | stat.S_IEXEC)
             ok = _verify(exe, name, spec.get("version_flag", "--version"))
             with open(os.path.join(dest_dir, ".ok"), "w") as f:
                 f.write(ok or "ok")
@@ -138,7 +179,8 @@ def _setup_binary(spec, dest_dir):
             os.path.isdir(os.path.join(tmpd, archive_dir)) else tmpd
 
         if layout.get("wrapper"):
-            inner = layout["binary"]
+            inner = layout["windows_binary"] if (IS_WINDOWS and layout.get("windows_binary")) \
+                else layout["binary"]
             if not os.path.isfile(os.path.join(src_root, inner)):
                 raise RuntimeError("layout binary %s not found in archive" % inner)
             # keep the extracted tree (launcher needs lib/), wrapper points into it
@@ -146,25 +188,27 @@ def _setup_binary(spec, dest_dir):
             if os.path.isdir(tree):
                 shutil.rmtree(tree)
             shutil.move(src_root, tree)
-            # zip archives don't preserve the exec bit — restore it on the launcher
             real = os.path.join(tree, inner)
-            os.chmod(real, os.stat(real).st_mode | stat.S_IEXEC)
+            if not IS_WINDOWS:
+                # zip archives don't preserve the exec bit — restore it on the launcher
+                os.chmod(real, os.stat(real).st_mode | stat.S_IEXEC)
             exe = _write_wrapper(dest_dir, name, os.path.join(os.path.basename(tree), inner))
         else:
-            exe = os.path.join(dest_dir, name)
-            src = os.path.join(src_root, name)
-            if not os.path.isfile(src):
+            exe = os.path.join(dest_dir, name + (".exe" if IS_WINDOWS else ""))
+            src = next((v for v in _exe_variants(os.path.join(src_root, name))
+                        if os.path.isfile(v)), None)
+            if not src:
                 # some archives name the binary per-platform (e.g. oxlint-x86_64-apple-darwin)
                 arch_expr = layout.get("archive_binary", "").replace(
                     "{arch}", arch or "").replace("{os}", os_name or "").replace("{version}", version)
                 if arch_expr:
-                    cand = os.path.join(src_root, arch_expr)
-                    if os.path.isfile(cand):
-                        src = cand
-            if not os.path.isfile(src):
+                    src = next((v for v in _exe_variants(os.path.join(src_root, arch_expr))
+                                if os.path.isfile(v)), None)
+            if not src:
                 raise RuntimeError("binary %s not found in archive" % name)
             shutil.copy2(src, exe)
-            os.chmod(exe, os.stat(exe).st_mode | stat.S_IEXEC)
+            if not IS_WINDOWS:
+                os.chmod(exe, os.stat(exe).st_mode | stat.S_IEXEC)
         ok = _verify(exe, name, spec.get("version_flag", "--version"))
         for extra in spec.get("extra_downloads", []):
             target = os.path.join(tree if layout.get("wrapper") else dest_dir, extra["name"])
@@ -199,26 +243,29 @@ def _setup_npm(spec, dest_dir):
 
 
 def _setup_venv(spec, dest_dir):
-    py = shutil.which("python3")
+    py = shutil.which("python") if IS_WINDOWS else None
+    py = py or shutil.which("python3") or shutil.which("python")
     if not py:
-        raise RuntimeError("python3 not found; %s (venv form) skipped" % spec["name"])
-    if not os.path.isdir(os.path.join(dest_dir, "bin")):
+        raise RuntimeError("python not found; %s (venv form) skipped" % spec["name"])
+    scripts = "Scripts" if IS_WINDOWS else "bin"
+    vpy_ext = ".exe" if IS_WINDOWS else ""
+    if not os.path.isdir(os.path.join(dest_dir, scripts)):
         r = subprocess.run([py, "-m", "venv", dest_dir], capture_output=True, text=True, timeout=300)
         if r.returncode != 0:
             raise RuntimeError("venv creation failed: %s" % r.stderr.strip()[:300])
-    vpy = os.path.join(dest_dir, "bin", "python")
+    vpy = os.path.join(dest_dir, scripts, "python" + vpy_ext)
     deps = spec.get("pip_deps", {})
     if spec.get("min_python"):
         r = subprocess.run([vpy, "-c", "import sys;print('%d.%d'%sys.version_info[:2])"],
                            capture_output=True, text=True)
         venv_ver = r.stdout.strip()
         need = tuple(int(x) for x in spec["min_python"].split("."))
-        have = tuple(int(x) for x in venv_ver.split("."))
+        have = tuple(int(x) for x in venv_ver.split(".")[:2]) if venv_ver else (0, 0)
         if have < need:
             deps = spec.get("pip_deps_fallback", deps)
             print("setup: python %s < %s, using fallback pins for %s"
                   % (venv_ver, spec["min_python"], spec["name"]))
-    pip = os.path.join(dest_dir, "bin", "pip")
+    pip = os.path.join(dest_dir, scripts, "pip" + vpy_ext)
     pkgs = " ".join("%s==%s" % (k, v) for k, v in deps.items())
     print("setup: pip install for %s %s" % (spec["name"], spec["version"]))
     r = subprocess.run([pip, "install", "--no-input", "--quiet"] + pkgs.split(),
@@ -232,11 +279,15 @@ def _setup_venv(spec, dest_dir):
 
 
 def setup_all(only=None):
-    """Per-engine isolation: collect failures, install the rest, report at the end."""
+    """Per-engine isolation: collect failures, install the rest, report at the end.
+    Engines unsupported on this platform are skipped with a notice (not a failure)."""
     specs = load_registry()
     results, failures = {}, []
     for key, spec in specs.items():
         if only and key not in only:
+            continue
+        if not platform_supported(spec):
+            print("setup: SKIP %s (not supported on %s)" % (key, platform.system()))
             continue
         try:
             results[key] = setup_engine(spec)

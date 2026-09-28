@@ -13,6 +13,8 @@ import shutil
 import subprocess
 import sys
 
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import setup_engine as _se  # noqa: E402
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from common import SEVERITIES, fail, make_issue, read_file_list, write_result  # noqa: E402
 
@@ -23,9 +25,7 @@ ENGINES_DIR = os.path.expanduser("~/.codespot/engines")
 
 
 def find_oxlint():
-    import glob
-    hits = sorted(glob.glob(os.path.join(ENGINES_DIR, "oxlint-*", "oxlint")))
-    return hits[-1] if hits else shutil.which("oxlint")
+    return _se.resolve_engine_cmd("oxlint") or shutil.which("oxlint")
 
 
 def find_eslint_layer():

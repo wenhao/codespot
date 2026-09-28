@@ -14,6 +14,8 @@ import subprocess
 import sys
 import tempfile
 
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import setup_engine as _se  # noqa: E402
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from common import fail, make_issue, read_file_list, redact, write_result  # noqa: E402
 
@@ -22,13 +24,7 @@ AGGREGATE_DIR_NAME = "codespot-scope"
 
 
 def find_binary():
-    import glob
-    home = os.path.expanduser("~/.codespot/engines")
-    hits = sorted(glob.glob(os.path.join(home, "gitleaks-*", "gitleaks")))
-    if hits:
-        return hits[-1]
-    which = shutil.which("gitleaks")
-    return which
+    return _se.resolve_engine_cmd("gitleaks") or shutil.which("gitleaks")
 
 
 def line_for_content(content, start=0):

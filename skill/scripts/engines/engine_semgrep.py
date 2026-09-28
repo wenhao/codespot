@@ -22,6 +22,8 @@ import shutil
 import subprocess
 import sys
 
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import setup_engine as _se  # noqa: E402
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from common import fail, make_issue, read_file_list, write_result  # noqa: E402
 
@@ -49,8 +51,7 @@ LANG_RULESETS = {
 
 
 def find_semgrep():
-    venv = sorted(glob.glob(os.path.join(ENGINES_DIR, "semgrep-*", "bin", "semgrep")))
-    return venv[-1] if venv else shutil.which("semgrep")
+    return _se.resolve_engine_cmd("semgrep") or shutil.which("semgrep")
 
 
 def project_ruleset_override(workdir):

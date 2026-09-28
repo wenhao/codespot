@@ -16,6 +16,8 @@ import shutil
 import subprocess
 import sys
 
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import setup_engine as _se  # noqa: E402
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from common import fail, make_issue, read_file_list, write_result  # noqa: E402
 
@@ -31,8 +33,7 @@ STYLE_PREFIXES = ("layout.", "capitalisation.")
 
 
 def find_sqlfluff():
-    hits = sorted(glob.glob(os.path.join(ENGINES_DIR, "sqlfluff-*", "bin", "sqlfluff")))
-    return hits[-1] if hits else shutil.which("sqlfluff")
+    return _se.resolve_engine_cmd("sqlfluff") or shutil.which("sqlfluff")
 
 
 def read_dialect_config(workdir):

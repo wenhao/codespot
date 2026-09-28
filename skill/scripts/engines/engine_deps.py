@@ -18,6 +18,8 @@ import shutil
 import subprocess
 import sys
 
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import setup_engine as _se  # noqa: E402
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from common import fail, make_issue, read_file_list, write_result  # noqa: E402
 
@@ -38,8 +40,7 @@ SEV_TEXT = {"CRITICAL": "critical", "HIGH": "major", "MODERATE": "minor",
 
 
 def find_binary():
-    hits = sorted(glob.glob(os.path.join(ENGINES_DIR, "osv-scanner-*", "osv-scanner")))
-    return hits[-1] if hits else shutil.which("osv-scanner")
+    return _se.resolve_engine_cmd("osv-scanner") or shutil.which("osv-scanner")
 
 
 def offline_db_available():

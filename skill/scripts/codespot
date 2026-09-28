@@ -54,10 +54,14 @@ def select_engines(entries, requested=None, effective_scope=None):
     enabled_cats = {cat for cat, c in conf_rules.items() if isinstance(c, dict) and c.get("enabled")}
     requested = set(requested or [])
     ai_skipped_full = False
+    unsupported = []
     langs = {e.get("language") for e in entries if e.get("language")}
     chosen = []
     for key, spec in registry.items():
         if spec.get("internal"):
+            continue
+        if not setup_engine.platform_supported(spec):
+            unsupported.append(key)
             continue
         cat = spec.get("category")
         if cat in disabled:
@@ -74,7 +78,7 @@ def select_engines(entries, requested=None, effective_scope=None):
         else:
             continue
         chosen.append((key, spec))
-    return chosen, ai_skipped_full
+    return chosen, ai_skipped_full, unsupported
 
 
 def run_adapter(key, spec, root, list_path, out_path):
@@ -187,7 +191,9 @@ def do_scan(args):
         print("scan: nothing to scan, report written")
         return 0
 
-    chosen, ai_skipped_full = select_engines(entries, requested_engines, effective)
+    chosen, ai_skipped_full, unsupported = select_engines(entries, requested_engines, effective)
+    for key in unsupported:
+        print("scan: engine '%s' is not available on this platform (see registry platforms)" % key)
     if ai_skipped_full:
         print("scan: full-scope — AI review skipped (add --engine ai, or set rules.ai_review.enabled, to enable)")
     if not chosen:
@@ -444,6 +450,9 @@ def do_selftest(args):
         futures = {}
         for key, spec in registry.items():
             if spec.get("internal"):
+                continue
+            if not setup_engine.platform_supported(spec):
+                print("selftest: SKIP %s (not supported on this platform)" % key)
                 continue
             if not setup_engine.engine_binary(key, spec["version"]):
                 print("selftest: SKIP %s (not installed)" % key)

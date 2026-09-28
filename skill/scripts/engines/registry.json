@@ -15,7 +15,8 @@
         "url": "https://github.com/gitleaks/gitleaks/releases/download/v{version}/gitleaks_{version}_{os}_{arch}.{ext}",
         "os_map": {
           "darwin": "darwin",
-          "linux": "linux"
+          "linux": "linux",
+          "windows": "windows"
         },
         "arch_map": {
           "arm64": "arm64",
@@ -23,7 +24,8 @@
         },
         "ext_map": {
           "darwin": "tar.gz",
-          "linux": "tar.gz"
+          "linux": "tar.gz",
+          "windows": "zip"
         }
       },
       "checksum": null,
@@ -43,7 +45,8 @@
         "url": "https://github.com/astral-sh/ruff/releases/download/{version}/ruff-{arch}-{os}.{ext}",
         "os_map": {
           "darwin": "apple-darwin",
-          "linux": "unknown-linux-gnu"
+          "linux": "unknown-linux-gnu",
+          "windows": "pc-windows-msvc"
         },
         "arch_map": {
           "arm64": "aarch64",
@@ -51,7 +54,8 @@
         },
         "ext_map": {
           "darwin": "tar.gz",
-          "linux": "tar.gz"
+          "linux": "tar.gz",
+          "windows": "zip"
         }
       },
       "checksum": null,
@@ -74,7 +78,8 @@
         "url": "https://github.com/oxc-project/oxc/releases/download/oxlint_v{version}/oxlint-{arch}-{os}.{ext}",
         "os_map": {
           "darwin": "apple-darwin",
-          "linux": "unknown-linux-gnu"
+          "linux": "unknown-linux-gnu",
+          "windows": "pc-windows-msvc"
         },
         "arch_map": {
           "arm64": "aarch64",
@@ -82,7 +87,8 @@
         },
         "ext_map": {
           "darwin": "tar.gz",
-          "linux": "tar.gz"
+          "linux": "tar.gz",
+          "windows": "zip"
         }
       },
       "layout": {
@@ -122,13 +128,15 @@
         "url": "https://github.com/pmd/pmd/releases/download/pmd_releases%2F{version}/pmd-dist-{version}-bin.{ext}",
         "ext_map": {
           "darwin": "zip",
-          "linux": "zip"
+          "linux": "zip",
+          "windows": "zip"
         }
       },
       "layout": {
         "archive_dir": "pmd-bin-{version}",
         "binary": "bin/pmd",
-        "wrapper": true
+        "wrapper": true,
+        "windows_binary": "bin/pmd.bat"
       },
       "checksum": null,
       "category": "java"
@@ -188,13 +196,15 @@
         "url": "https://github.com/spotbugs/spotbugs/releases/download/{version}/spotbugs-{version}.zip",
         "ext_map": {
           "darwin": "zip",
-          "linux": "zip"
+          "linux": "zip",
+          "windows": "zip"
         }
       },
       "layout": {
         "archive_dir": "spotbugs-4.10.4",
         "binary": "bin/spotbugs",
-        "wrapper": true
+        "wrapper": true,
+        "windows_binary": "bin/spotbugs.bat"
       },
       "extra_downloads": [
         {
@@ -242,7 +252,11 @@
       },
       "checksum": null,
       "selftest_optional": true,
-      "category": "semantic"
+      "category": "semantic",
+      "platforms": [
+        "darwin",
+        "linux"
+      ]
     },
     "osv-scanner": {
       "name": "osv-scanner",
@@ -259,7 +273,8 @@
         "url": "https://github.com/google/osv-scanner/releases/download/v{version}/osv-scanner_{os}_{arch}{ext}",
         "os_map": {
           "darwin": "darwin",
-          "linux": "linux"
+          "linux": "linux",
+          "windows": "windows"
         },
         "arch_map": {
           "arm64": "arm64",
@@ -267,7 +282,8 @@
         },
         "ext_map": {
           "darwin": "",
-          "linux": ""
+          "linux": "",
+          "windows": ".exe"
         }
       },
       "raw_binary": true,
@@ -290,7 +306,8 @@
         "url": "https://github.com/trufflesecurity/trufflehog/releases/download/v{version}/trufflehog_{version}_{os}_{arch}.{ext}",
         "os_map": {
           "darwin": "darwin",
-          "linux": "linux"
+          "linux": "linux",
+          "windows": "windows"
         },
         "arch_map": {
           "arm64": "arm64",
@@ -298,7 +315,8 @@
         },
         "ext_map": {
           "darwin": "tar.gz",
-          "linux": "tar.gz"
+          "linux": "tar.gz",
+          "windows": "zip"
         }
       },
       "checksum": null

@@ -14,6 +14,8 @@ import shutil
 import subprocess
 import sys
 
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import setup_engine as _se  # noqa: E402
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from common import fail, make_issue, read_file_list, write_result  # noqa: E402
 
@@ -30,8 +32,7 @@ ENGINES_DIR = os.path.expanduser("~/.codespot/engines")
 
 
 def find_pmd():
-    hits = sorted(glob.glob(os.path.join(ENGINES_DIR, "pmd-*", "pmd")))
-    return hits[-1] if hits else shutil.which("pmd")
+    return _se.resolve_engine_cmd("pmd") or shutil.which("pmd")
 
 
 def java_available():
@@ -54,7 +55,11 @@ def rule_url(rule_ref):
 def _uri_to_path(uri):
     if uri.startswith("file://"):
         from urllib.parse import unquote, urlparse
-        return unquote(urlparse(uri).path)
+        p = unquote(urlparse(uri).path)
+        # windows drive letters: file:///C:/x -> /C:/x -> C:/x
+        if len(p) > 2 and p[0] == "/" and p[2] == ":" and p[1].isalpha():
+            p = p[1:]
+        return p
     return uri
 
 
@@ -95,8 +100,7 @@ def parts_last(ref):
 # ---------------- SpotBugs + FindSecBugs deep layer (optional) ----------------
 
 def find_spotbugs():
-    hits = sorted(glob.glob(os.path.join(ENGINES_DIR, "spotbugs-*", "spotbugs")))
-    return hits[-1] if hits else shutil.which("spotbugs")
+    return _se.resolve_engine_cmd("spotbugs") or shutil.which("spotbugs")
 
 
 def find_findsecbugs(spotbugs_dir):

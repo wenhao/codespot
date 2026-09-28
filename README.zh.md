@@ -228,18 +228,19 @@ codespot/
 - 联网做一次 `setup` + `update-db` 后，除 Semgrep 外全部能力离线可用；Semgrep 需规则缓存或本地规则目录。
 - Windows：除 Semgrep（需 WSL2/Docker）外可用，另需少量 registry/wrapper 适配；当前在 macOS/Linux 充分验证。
 
-### 平台兼容性（Windows 支持现状）
+### 平台兼容性（Windows 已支持）
 
 | 维度 | 现状 |
 |---|---|
-| 主控 CLI / 报告 / scope | 兼容（纯 Python 标准库，路径统一正斜杠） |
-| gitleaks / ruff / oxlint / OSV-Scanner | 官方有 Windows 二进制；registry 的 `os_map` 需补 `windows` 映射 |
-| PMD / SpotBugs | 发行包跨平台；wrapper 需改用自带 `.bat` 启动器 |
-| SQLFluff / bandit | 纯 Python venv，天然跨平台 |
-| Semgrep CE | 不支持 Windows 原生（需 WSL2/Docker），`semantic` 类别不可用，其余不受影响 |
-| 符号链接聚合 | 已有复制回退 |
+| 主控 CLI / 报告 / scope / AI 审查 | ✅ 纯 Python 标准库 |
+| gitleaks / ruff / oxlint / OSV-Scanner / TruffleHog | ✅ 官方 Windows 发行物（registry 已映射） |
+| PMD / SpotBugs | ✅ 复用发行包自带 `.bat` 启动器 |
+| SQLFluff / bandit / ESLint 深度层 | ✅ venv 自动适配 `Scripts\` 目录 / npm |
+| Semgrep CE | ❌ 无原生 Windows——registry 平台白名单自动跳过并提示；需要 `semantic` 类别时用 WSL2 |
 
-正式支持 Windows 预计约一天（补平台映射、wrapper 改 .bat、修 `file:///C:/...` 解析）并需真机 selftest。
+Windows 由 GitHub Actions（`windows-latest`）持续验证：setup 幂等 ×2 → selftest → 演示仓库扫描冒烟。
+
+**Windows 安装**：软链需开发者模式/管理员权限，直接复制亦可——`robocopy skill "%USERPROFILE%\.agents\skills\codespot" /E`（或 `.claude\skills/`、`.codex\skills/`），CLI 以 `python ...\scripts\codespot setup` 方式调用。
 
 ### 离线使用指南
 
