@@ -206,6 +206,13 @@ def _setup_binary(spec, dest_dir):
                     src = next((v for v in _exe_variants(os.path.join(src_root, arch_expr))
                                 if os.path.isfile(v)), None)
             if not src:
+                # some archives wrap the binary in a platform-named directory
+                # (e.g. ruff-x86_64-unknown-linux-gnu/ruff) — search recursively
+                for hit in glob.glob(os.path.join(tmpd, "**", name), recursive=True):
+                    src = next((v for v in _exe_variants(hit) if os.path.isfile(v)), None)
+                    if src:
+                        break
+            if not src:
                 raise RuntimeError("binary %s not found in archive" % name)
             shutil.copy2(src, exe)
             if not IS_WINDOWS:
