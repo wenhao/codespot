@@ -11,7 +11,7 @@
 ![runtime](https://img.shields.io/badge/runtime-python%20stdlib%20only-informational)
 ![offline](https://img.shields.io/badge/offline-ready%20(via%20update--db)-9cf)
 ![license](https://img.shields.io/badge/license-internal%20use-important)
-[![windows-ci](https://github.com/wenhao/codespot/actions/workflows/windows.yml/badge.svg)](https://github.com/wenhao/codespot/actions/workflows/windows.yml)
+[![ci](https://github.com/wenhao/codespot/actions/workflows/ci.yml/badge.svg)](https://github.com/wenhao/codespot/actions/workflows/ci.yml)
 
 [English](README.md) | 中文
 
@@ -239,7 +239,7 @@ codespot/
 | SQLFluff / bandit / ESLint 深度层 | ✅ venv 自动适配 `Scripts\` 目录 / npm |
 | Semgrep CE | ❌ 无原生 Windows——registry 平台白名单自动跳过并提示；需要 `semantic` 类别时用 WSL2 |
 
-Windows 由 GitHub Actions（`windows-latest`）持续验证：setup 幂等 ×2 → selftest → 演示仓库扫描冒烟。
+三平台（`ubuntu` / `macos` / `windows`）由 GitHub Actions 矩阵持续验证：setup 幂等 ×2 → selftest → 演示仓库扫描冒烟。
 
 **Windows 安装**：软链需开发者模式/管理员权限，直接复制亦可——`robocopy skill "%USERPROFILE%\.agents\skills\codespot" /E`（或 `.claude\skills/`、`.codex\skills/`），CLI 以 `python ...\scripts\codespot setup` 方式调用。
 

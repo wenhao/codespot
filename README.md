@@ -11,7 +11,7 @@
 ![runtime](https://img.shields.io/badge/runtime-python%20stdlib%20only-informational)
 ![offline](https://img.shields.io/badge/offline-ready%20(via%20update--db)-9cf)
 ![license](https://img.shields.io/badge/license-internal%20use-important)
-[![windows-ci](https://github.com/wenhao/codespot/actions/workflows/windows.yml/badge.svg)](https://github.com/wenhao/codespot/actions/workflows/windows.yml)
+[![ci](https://github.com/wenhao/codespot/actions/workflows/ci.yml/badge.svg)](https://github.com/wenhao/codespot/actions/workflows/ci.yml)
 
 English | [中文](README.zh.md)
 
@@ -227,7 +227,7 @@ codespot/
 ## Offline & platform notes
 
 - After `setup` + `update-db` (once, online), everything except Semgrep works fully offline; Semgrep needs its rule cache or a local rules dir.
-- **Windows: supported** and continuously validated by GitHub Actions on `windows-latest` (setup ×2, selftest, smoke scan) — see the CI badge above. Every engine works natively except Semgrep, which has no Windows build: codespot skips it with a console notice, so the `semantic` category needs WSL2.
+- **Windows: supported** and continuously validated by the GitHub Actions matrix on `ubuntu` / `macos` / `windows` (setup ×2, selftest, smoke scan) — see the CI badge above. Every engine works natively except Semgrep, which has no Windows build: codespot skips it with a console notice, so the `semantic` category needs WSL2.
 - **Windows install**: symlinks need developer mode/admin, so a plain copy works too — `robocopy skill "%USERPROFILE%\.agents\skills\codespot" /E` (or into `.claude\skills/`, `.codex\skills/`), then run the CLI as `python ...\scripts\codespot setup`.
 
 ## Known limitations
