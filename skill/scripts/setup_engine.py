@@ -287,6 +287,9 @@ def setup_all(only=None):
     for key, spec in specs.items():
         if only and key not in only:
             continue
+        if spec.get("agent_driven"):
+            print("setup: SKIP %s (agent-driven, nothing to install)" % key)
+            continue
         if not platform_supported(spec):
             print("setup: SKIP %s (not supported on %s)" % (key, platform.system()))
             continue
