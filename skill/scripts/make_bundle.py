@@ -128,22 +128,19 @@ def collect_osv_db(stage):
 
 
 def collect_semgrep_rules(stage):
-    """Snapshot semgrep rules: extract yml/yaml files from the ~/.semgrep cache."""
+    """Snapshot semgrep rules: shallow-clone the OSS semgrep-rules repo
+    (LGPL-2.1; redistribution OK with source link — see THIRD-PARTY-NOTICES)."""
     off = os.path.join(stage, "offline", "semgrep-rules")
     os.makedirs(off, exist_ok=True)
-    cache = os.path.expanduser("~/.semgrep")
-    n = 0
-    if os.path.isdir(cache):
-        for root, _dirs, files in os.walk(cache):
-            for f in files:
-                if f.endswith((".yml", ".yaml")):
-                    rel = os.path.relpath(os.path.join(root, f), cache)
-                    tgt = os.path.join(off, rel)
-                    os.makedirs(os.path.dirname(tgt) or off, exist_ok=True)
-                    shutil.copy2(os.path.join(root, f), tgt)
-                    n += 1
-    if n == 0:
+    r = subprocess.run(["git", "clone", "--depth", "1", "-q",
+                        "https://github.com/semgrep/semgrep-rules", off],
+                       capture_output=True, text=True, timeout=600)
+    if r.returncode != 0:
+        print("make_bundle: semgrep-rules clone failed: %s" % r.stderr.strip()[:150], file=sys.stderr)
         shutil.rmtree(off, ignore_errors=True)
+        return 0
+    n = sum(len([f for f in fs if f.endswith((".yml", ".yaml"))])
+            for _r, _d, fs in os.walk(off))
     return n
 
 

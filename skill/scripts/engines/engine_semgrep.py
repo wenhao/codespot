@@ -54,9 +54,28 @@ def find_semgrep():
     return _se.resolve_engine_cmd("semgrep") or shutil.which("semgrep")
 
 
-def offline_rules_dir():
-    d = os.path.expanduser("~/.codespot/semgrep-rules")
-    return d if os.path.isdir(d) and any(f.endswith((".yml", ".yaml")) for _r, _d, fs in os.walk(d) for f in fs) else None
+LANG_RULE_DIRS = {  # target language -> subdir of the semgrep-rules repo
+    "py": "python", "go": "go", "java": "java", "ruby": "ruby", "php": "php",
+    "kotlin": "kotlin", "csharp": "csharp", "rust": "rust", "c": "c", "cpp": "c",
+    "swift": "swift", "scala": "scala", "terraform": "terraform",
+    "js": "javascript", "jsx": "javascript", "mjs": "javascript", "cjs": "javascript",
+    "ts": "typescript", "tsx": "typescript", "mts": "typescript", "cts": "typescript",
+}
+
+
+def offline_rules_for(langs):
+    """Offline rules dirs (under ~/.codespot/semgrep-rules, shipped by the
+    offline bundle) for the requested languages. The repo root contains
+    non-rule yamls (template etc.), so only language subdirs are used."""
+    base = os.path.expanduser("~/.codespot/semgrep-rules")
+    if not os.path.isdir(base):
+        return []
+    dirs = []
+    for lang in langs:
+        d = os.path.join(base, LANG_RULE_DIRS.get(lang, ""))
+        if os.path.isdir(d) and d not in dirs:
+            dirs.append(d)
+    return dirs
 
 
 def project_ruleset_override(workdir):
@@ -99,10 +118,10 @@ def main():
     if override:
         configs = [override]
     else:
-        offline = offline_rules_dir()
-        if offline:
-            configs = [offline]
-            sys.stderr.write("codespot-semgrep: using offline rules from %s\n" % offline)
+        langs = {e.get("language") for e in entries if e.get("language")}
+        configs = offline_rules_for(sorted(langs))
+        if configs:
+            sys.stderr.write("codespot-semgrep: using offline rules from %s\n" % ", ".join(configs))
         else:
             configs = ["auto"]
     if not configs:
