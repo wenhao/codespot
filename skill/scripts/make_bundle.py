@@ -168,6 +168,11 @@ set -e
 HERE=$(cd "$(dirname "$0")" && pwd)
 mkdir -p ~/.codespot/engines
 cp -R "$HERE/engines/"* ~/.codespot/engines/ 2>/dev/null || true
+# venv engines are non-relocatable: drop their installed-markers so
+# `codespot setup --offline-dir` recreates them from wheels/
+for d in "$HOME"/.codespot/engines/bandit-* "$HOME"/.codespot/engines/sqlfluff-* "$HOME"/.codespot/engines/semgrep-*; do
+  [ -f "$d/.ok" ] && rm -f "$d/.ok"
+done
 if [ -d "$HERE/offline/osv-db" ]; then
   for base in "$HOME/Library/Caches/osv-scalibr" "$HOME/.cache/osv-scalibr"; do
     mkdir -p "$base" && cp -R "$HERE/offline/osv-db/"* "$base/" 2>/dev/null || true
@@ -180,13 +185,14 @@ fi
 mkdir -p ~/.agents/skills
 rm -rf ~/.agents/skills/codespot
 cp -R "$HERE/skill" ~/.agents/skills/codespot
-echo "codespot installed offline. Run: ~/.agents/skills/codespot/scripts/codespot setup --offline-dir \\"$HERE/offline\\""
+echo "codespot installed offline. Run: ~/.agents/skills/codespot/scripts/codespot setup --offline-dir <bundle>/offline"
 """
     bat = """@echo off
 REM codespot offline installer (windows)
 set HERE=%~dp0
 if not exist "%USERPROFILE%\\.codespot\\engines" mkdir "%USERPROFILE%\\.codespot\\engines"
 xcopy /E /I /Y "%HERE%engines\\*" "%USERPROFILE%\\.codespot\\engines\\" >nul
+for /D %%d in ("%USERPROFILE%\\.codespot\\engines\\bandit-*" "%USERPROFILE%\\.codespot\\engines\\sqlfluff-*" "%USERPROFILE%\\.codespot\\engines\\semgrep-*") do if exist "%%d\\.ok" del "%%d\\.ok"
 if exist "%HERE%offline\\osv-db" (
   if not exist "%USERPROFILE%\\AppData\\Local\\osv-scalibr" mkdir "%USERPROFILE%\\AppData\\Local\\osv-scalibr"
   xcopy /E /I /Y "%HERE%offline\\osv-db\\*" "%USERPROFILE%\\AppData\\Local\\osv-scalibr\\" >nul
