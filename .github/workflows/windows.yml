@@ -6,6 +6,9 @@ on:
   pull_request:
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   windows:
     runs-on: windows-latest
@@ -18,19 +21,35 @@ jobs:
         with:
           node-version: "20"
       - name: Engine setup (idempotency x2)
+        shell: bash
         run: |
-          python skill/scripts/codespot setup
-          python skill/scripts/codespot setup
+          set -o pipefail
+          mkdir -p ci-logs
+          python skill/scripts/codespot setup 2>&1 | tee ci-logs/setup.log
+          python skill/scripts/codespot setup 2>&1 | tee -a ci-logs/setup.log
       - name: Selftest (all engines supported on Windows)
-        run: python skill/scripts/codespot selftest
+        shell: bash
+        run: |
+          set -o pipefail
+          python skill/scripts/codespot selftest 2>&1 | tee ci-logs/selftest.log
       - name: Smoke scan on a demo repo
         shell: bash
         run: |
+          set -o pipefail
           mkdir -p /tmp/demo/src && cd /tmp/demo
           git init -q && git config user.email t@t && git config user.name t
           printf 'import os\n\ndef check(u):\n    assert u == "admin"\n\npw = "hunter2"\n' > src/app.py
           git add -A && git commit -qm init
           printf 'token = "AKIAABCDEFGHIJKLMNOP"\nimport sys\n\ndef f(x):\n    eval(x)\n' > src/new.py
-          python "$GITHUB_WORKSPACE/skill/scripts/codespot" scan --scope uncommitted
+          python "$GITHUB_WORKSPACE/skill/scripts/codespot" scan --scope uncommitted 2>&1 | tee "$GITHUB_WORKSPACE/ci-logs/smoke.log"
           test -f .codespot/report.json && test -f .codespot/report.md
           test -f .codespot/ai-plan.json
+      - name: Publish logs (on failure)
+        if: failure()
+        shell: bash
+        run: |
+          git config user.name ci-bot && git config user.email ci@local
+          git checkout -b "ci-logs-$GITHUB_RUN_ID"
+          git add ci-logs
+          git commit -m "ci logs run $GITHUB_RUN_ID"
+          git push "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/wenhao/codespot" "ci-logs-$GITHUB_RUN_ID"
