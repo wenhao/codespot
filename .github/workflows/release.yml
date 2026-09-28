@@ -41,6 +41,7 @@ jobs:
       - name: Update OSV offline DB
         run: python skill/scripts/codespot update-db
       - name: Build bundle
+        shell: bash
         run: |
           VER="${{ github.event.inputs.version || github.ref_name }}"
           python skill/scripts/make_bundle.py --version "$VER" --out dist

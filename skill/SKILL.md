@@ -47,8 +47,10 @@ description: Local static code scanning for AI-generated code. Use whenever the 
 增量档位（uncommitted/unpushed/ref）的 `codespot scan` 默认包含 AI 语义审查；**全量扫描（scope=all）默认跳过**并输出提示（`--engine ai` 或 config `rules.ai_review.enabled: true` 可开启；`rules.ai_review.disabled: true` 关闭）。工作流三步：
 
 1. **生成计划**：随扫描自动产出 `.codespot/ai-plan.json`（目标文件、输出 schema、审查重点、超限分批指引）；单独补跑可用 `codespot scan --engine ai`。
-2. **分析**：读 plan → 逐文件阅读代码，聚焦**静态工具抓不到的语义问题**（逻辑错误、并发竞态、错误处理缺口、资源泄漏、跨文件不一致），不要重复规则类发现；每条给精确 file:line 与依据，按 schema 写 `.codespot/ai-result.json`（confidence 必填，无发现写 `[]`）。
+2. **分析**：**先独立评审，再对照 plan**。先通读目标文件的全部改动及其所属方法/调用链，形成自己的缺陷判断——不要以 plan 内容为分析起点（先入为主会抑制独立发现）。判断时逐项过：空值/解引用（可空返回值、自动拆箱、Map.get）、异常路径（吞异常、中断态、上下文丢失）、边界条件（off-by-one、空/零/NaN、漏分支）、并发（共享态、检查后执行）、资源泄漏、日志滥用（热路径 debug、敏感信息）、跨文件契约（调用方是否适配新签名/新语义）、配置默认值自洽、死代码残留。之后再读 plan 交叉核对：plan 指向缺陷类问题（空值/异常/泄漏/并发/边界/逻辑/安全）而自己未发现的 → 核实后补充；plan 中复杂度、风格、文档类告警不纳入结果。
+   每条发现遵守：**file:line 锚定在问题可见的那一行**（解引用发生的行、缺 break 的 case 行、日志语句行），写结果前重读该行确认与描述一致，禁止用方法签名行或代码块首行顶替；严重级按实际影响给单一级别（数据错误/安全/崩溃=Critical，功能缺陷=Major，改进=Minor）。按 schema 写 `.codespot/ai-result.json`（confidence 必填，无发现写 `[]`）。
 3. **合并**：`codespot ai-scan absorb` → 呈现合并报告。AI 发现标注为**建议性**（advisory）并附 confidence；修复建议同样先判断合理性。
+4. **补漏复查**：对本次零发现的文件快速复查一遍改动区间（零发现可能属实，也可能是漏看）；合并报告中若某文件被静态引擎标了大量问题而你零产出，优先复查该文件。
 
 ## 规则与边界
 
