@@ -321,7 +321,7 @@
         "ext_map": {
           "darwin": "tar.gz",
           "linux": "tar.gz",
-          "windows": "zip"
+          "windows": "tar.gz"
         }
       },
       "checksum": null
