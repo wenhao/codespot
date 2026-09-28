@@ -20,7 +20,7 @@ description: Local static code scanning for AI-generated code. Use whenever the 
    ```
    `--scope`：`auto`（默认）/ `uncommitted` / `unpushed` / `ref:<ref>` / `all`。
 3. **读报告**：读 `.codespot/report.json`。`engine_errors` 非空时如实说明哪些引擎失败，不要假装扫描完整。
-3a. **AI 语义审查（默认开启）**：扫描已自动生成 `.codespot/ai-plan.json`——按计划逐文件分析（聚焦静态工具盲区，见"AI 深度审查"章），写 `.codespot/ai-result.json`（无发现写 `[]`），执行 `codespot ai-scan absorb` 合并。**absorb 完成后**再进入第 4 步呈现（基于合并后报告）。用户明确说"只扫不审"或 config 已关闭 ai_review 时跳过本步。
+3a. **AI 语义审查（增量档位默认开启）**：扫描已自动生成 `.codespot/ai-plan.json`——按计划逐文件分析（聚焦静态工具盲区，见"AI 深度审查"章），写 `.codespot/ai-result.json`（无发现写 `[]`），执行 `codespot ai-scan absorb` 合并。**absorb 完成后**再进入第 4 步呈现（基于合并后报告）。跳过情形：① 全量扫描（scope=all，含 auto 降级）默认跳过——CLI 会输出提示行，**向用户转述**："全量扫描已跳过 AI 审查，如需开启可 `--engine ai` 重跑或在 config 设 `rules.ai_review.enabled`"；② 用户明确说"只扫不审"；③ config 已关闭 ai_review。
 4. **呈现 + 修复选项**：用中文摘要（各严重级数量、最关键的几条），**必须**用 AskUserQuestion 呈现：
    - 先查看问题详情（用 `codespot show` 按严重级/文件分批呈现，看完回到本选项）
    - （报告含密钥发现时可提示）启用深度密钥检测：`codespot scan --engine trufflehog`——800+ 检测器；默认 `--no-verification` 纯本地检测，不联网验证密钥是否存活
@@ -44,7 +44,7 @@ description: Local static code scanning for AI-generated code. Use whenever the 
 
 ## AI 深度审查（默认开启，agent 驱动）
 
-每次 `codespot scan` 默认包含 AI 语义审查（config `rules.ai_review.disabled: true` 可关）。工作流三步：
+增量档位（uncommitted/unpushed/ref）的 `codespot scan` 默认包含 AI 语义审查；**全量扫描（scope=all）默认跳过**并输出提示（`--engine ai` 或 config `rules.ai_review.enabled: true` 可开启；`rules.ai_review.disabled: true` 关闭）。工作流三步：
 
 1. **生成计划**：随扫描自动产出 `.codespot/ai-plan.json`（目标文件、输出 schema、审查重点、超限分批指引）；单独补跑可用 `codespot scan --engine ai`。
 2. **分析**：读 plan → 逐文件阅读代码，聚焦**静态工具抓不到的语义问题**（逻辑错误、并发竞态、错误处理缺口、资源泄漏、跨文件不一致），不要重复规则类发现；每条给精确 file:line 与依据，按 schema 写 `.codespot/ai-result.json`（confidence 必填，无发现写 `[]`）。

@@ -40,17 +40,20 @@ def ensure_scope_list(root, scope, out_path):
     return effective, entries
 
 
-def select_engines(entries, requested=None):
+def select_engines(entries, requested=None, effective_scope=None):
     """Pick adapters per registry: language engines if they match a target file, always_on always.
     Categories disabled via .codespot/config.json rules.<cat>.disabled are skipped.
     Opt-in engines (registry opt_in: true) run only when explicitly requested via
-    --engine or enabled via .codespot/config.json rules.<category>.enabled."""
+    --engine or enabled via .codespot/config.json rules.<category>.enabled.
+    The AI engine is auto-skipped on full scans (scope 'all') unless explicitly
+    requested (--engine ai) or permanently enabled (rules.ai_review.enabled)."""
     from common import load_project_config
     registry = setup_engine.load_registry()
     conf_rules = load_project_config().get("rules") or {}
     disabled = {cat for cat, c in conf_rules.items() if isinstance(c, dict) and c.get("disabled")}
     enabled_cats = {cat for cat, c in conf_rules.items() if isinstance(c, dict) and c.get("enabled")}
     requested = set(requested or [])
+    ai_skipped_full = False
     langs = {e.get("language") for e in entries if e.get("language")}
     chosen = []
     for key, spec in registry.items():
@@ -59,6 +62,10 @@ def select_engines(entries, requested=None):
         cat = spec.get("category")
         if cat in disabled:
             continue
+        if spec.get("agent_driven"):
+            if effective_scope == "all" and key not in requested and cat not in enabled_cats:
+                ai_skipped_full = True
+                continue
         if spec.get("opt_in"):
             if key not in requested and cat not in enabled_cats:
                 continue
@@ -67,7 +74,7 @@ def select_engines(entries, requested=None):
         else:
             continue
         chosen.append((key, spec))
-    return chosen
+    return chosen, ai_skipped_full
 
 
 def run_adapter(key, spec, root, list_path, out_path):
@@ -180,7 +187,9 @@ def do_scan(args):
         print("scan: nothing to scan, report written")
         return 0
 
-    chosen = select_engines(entries, requested_engines)
+    chosen, ai_skipped_full = select_engines(entries, requested_engines, effective)
+    if ai_skipped_full:
+        print("scan: full-scope — AI review skipped (add --engine ai, or set rules.ai_review.enabled, to enable)")
     if not chosen:
         sys.stderr.write("codespot: no engine matches the target files\n")
         return 2
