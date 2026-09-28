@@ -1,0 +1,91 @@
+name: offline-release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "release version (e.g. v1.0.0)"
+        required: true
+        default: "v0.1.0"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-latest, target: linux-x64 }
+          - { os: macos-latest, target: macos-arm64 }
+          - { os: macos-13, target: macos-x64 }
+          - { os: windows-latest, target: windows-x64 }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Install engines
+        run: python skill/scripts/codespot setup
+      - name: Update OSV offline DB
+        run: python skill/scripts/codespot update-db
+      - name: Build bundle
+        run: |
+          VER="${{ github.event.inputs.version || github.ref_name }}"
+          python skill/scripts/make_bundle.py --version "$VER" --out dist
+      - name: Offline smoke (extract, install, scan with no network deps)
+        shell: bash
+        run: |
+          BUNDLE=$(ls dist/codespot-offline-* | head -1)
+          mkdir -p /tmp/extract && tar -xf "$BUNDLE" -C /tmp/extract || unzip -q "$BUNDLE" -d /tmp/extract
+          DIR=$(echo /tmp/extract/codespot-offline-*)
+          case "$RUNNER_OS" in
+            Windows) cmd //c "$DIR\\install-offline.bat" ;;
+            *) sh "$DIR/install-offline.sh" ;;
+          esac
+          cd /tmp/demo 2>/dev/null || {
+            mkdir -p /tmp/demo/src && cd /tmp/demo
+            git init -q && git config user.email t@t && git config user.name t
+            printf 'import os\n\ndef check(u):\n    assert u == "admin"\n\npw = "hunter2"\n' > src/app.py
+            git add -A && git commit -qm init
+            printf 'token = "AKIAABCDEFGHIJKLMNOP"\nimport sys\n\ndef f(x):\n    eval(x)\n' > src/new.py
+          }
+          python ~/.agents/skills/codespot/scripts/codespot scan --scope uncommitted --offline-dir "$DIR/offline"
+          test -f .codespot/report.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bundle-${{ matrix.target }}
+          path: dist/codespot-offline-*
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Create release and attach bundles
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.version || github.ref_name }}
+          name: codespot ${{ github.event.inputs.version || github.ref_name }} (offline bundles)
+          body: |
+            Offline release bundles — engines, dependency-vulnerability DB and semgrep rules included.
+            Download the file matching your platform, extract, run install-offline, then scan with no network.
+            Build date: see MANIFEST.json inside each bundle. Vulnerability DB is current as of the build date.
+          draft: false
+          prerelease: false
+          files: dist/codespot-offline-*

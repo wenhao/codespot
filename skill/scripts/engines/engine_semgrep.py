@@ -54,6 +54,11 @@ def find_semgrep():
     return _se.resolve_engine_cmd("semgrep") or shutil.which("semgrep")
 
 
+def offline_rules_dir():
+    d = os.path.expanduser("~/.codespot/semgrep-rules")
+    return d if os.path.isdir(d) and any(f.endswith((".yml", ".yaml")) for _r, _d, fs in os.walk(d) for f in fs) else None
+
+
 def project_ruleset_override(workdir):
     p = os.path.join(workdir, ".codespot", "config.json")
     if os.path.isfile(p):
@@ -94,7 +99,12 @@ def main():
     if override:
         configs = [override]
     else:
-        configs = ["auto"]
+        offline = offline_rules_dir()
+        if offline:
+            configs = [offline]
+            sys.stderr.write("codespot-semgrep: using offline rules from %s\n" % offline)
+        else:
+            configs = ["auto"]
     if not configs:
         write_result(a.out, [])
         return

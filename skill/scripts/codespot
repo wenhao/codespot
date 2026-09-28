@@ -251,6 +251,8 @@ def _write_reports(root, payload):
 
 
 def do_setup(args):
+    if args.offline_dir:
+        os.environ["CODESPOT_OFFLINE_DIR"] = os.path.abspath(args.offline_dir)
     try:
         setup_engine.setup_all(only=args.engines or None)
     except RuntimeError as e:
@@ -529,6 +531,7 @@ def main():
     sub = p.add_subparsers(dest="cmd", required=True)
 
     sp = sub.add_parser("setup", help="install scan engines (idempotent)")
+    sp.add_argument("--offline-dir", help="offline bundle dir: install venv engines from wheels/ with --no-index")
     sp.add_argument("engines", nargs="*", help="specific engines (default: all)")
     sp.set_defaults(fn=do_setup)
 
