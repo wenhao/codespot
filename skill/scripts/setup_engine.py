@@ -149,7 +149,8 @@ def _setup_binary(spec, dest_dir):
     dl = spec.get("download", {})
     sysname = platform.system().lower()
     os_name = dl.get("os_map", {}).get(sysname)
-    arch = dl.get("arch_map", {}).get(platform.machine(), platform.machine().lower())
+    machine = platform.machine().lower()
+    arch = dl.get("arch_map", {}).get(platform.machine(), dl.get("arch_map", {}).get(machine, machine))
     ext = dl.get("ext_map", {}).get(sysname, "tar.gz")
     if not os_name and "{os}" in dl.get("url", ""):
         raise RuntimeError("unsupported platform %s/%s for %s" % (platform.system(), platform.machine(), name))
@@ -226,14 +227,14 @@ def _setup_npm(spec, dest_dir):
     npm = shutil.which("npm")
     if not npm:
         raise RuntimeError("npm not found; ESLint deep layer skipped (oxlint layer still covers JS/TS)")
-    deps = " ".join('"%s@%s"' % (k, v) for k, v in spec.get("npm_deps", {}).items())
+    dep_args = ["%s@%s" % (k, v) for k, v in spec.get("npm_deps", {}).items()]
     pkg = json.dumps({"name": "codespot-eslint-layer", "private": True,
                       "version": "1.0.0", "type": "module"}, indent=1)
     with open(os.path.join(dest_dir, "package.json"), "w") as f:
         f.write(pkg)
     print("setup: npm install for %s %s" % (spec["name"], spec["version"]))
-    r = subprocess.run("%s install --no-audit --no-fund %s" % (npm, deps),
-                       shell=True, capture_output=True, text=True, timeout=600, cwd=dest_dir)
+    r = subprocess.run([npm, "install", "--no-audit", "--no-fund"] + dep_args,
+                       capture_output=True, text=True, timeout=600, cwd=dest_dir)
     if r.returncode != 0:
         raise RuntimeError("npm install failed: %s" % (r.stderr or r.stdout).strip()[:300])
     with open(os.path.join(dest_dir, ".ok"), "w") as f:
