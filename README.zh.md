@@ -11,6 +11,7 @@
 ![runtime](https://img.shields.io/badge/runtime-python%20stdlib%20only-informational)
 ![offline](https://img.shields.io/badge/offline-ready%20(via%20update--db)-9cf)
 ![license](https://img.shields.io/badge/license-internal%20use-important)
+[![windows-ci](https://github.com/wenhao/codespot/actions/workflows/windows.yml/badge.svg)](https://github.com/wenhao/codespot/actions/workflows/windows.yml)
 
 [English](README.md) | 中文
 
