@@ -23,7 +23,8 @@ import setup_engine  # noqa: E402
 CODESPOT_DIR = ".codespot"
 REPORT_JSON = "report.json"
 REPORT_MD = "report.md"
-ENGINE_TIMEOUT = 300
+ENGINE_TIMEOUT = 900  # semgrep full-repo with full rules can exceed 300s
+ENGINE_TIMEOUT_OVERRIDES = {"semgrep": 900, "pmd": 600, "osv-scanner": 600}
 SEV_ORDER = {"critical": 0, "major": 1, "minor": 2, "info": 3}
 
 
@@ -90,7 +91,8 @@ def run_adapter(key, spec, root, list_path, out_path):
     try:
         r = subprocess.run(
             [sys.executable, script, "--workdir", root, "--files", list_path, "--out", out_path],
-            capture_output=True, text=True, timeout=ENGINE_TIMEOUT, env=env)
+            capture_output=True, text=True,
+            timeout=ENGINE_TIMEOUT_OVERRIDES.get(key, ENGINE_TIMEOUT), env=env)
     except subprocess.TimeoutExpired:
         return key, None, "timed out after %ss" % ENGINE_TIMEOUT
     if r.returncode != 0:
@@ -242,22 +244,102 @@ def _now():
     return datetime.datetime.now().astimezone().isoformat(timespec="seconds")
 
 
+def render_html(payload):
+    """codespot-branded self-contained HTML report (no external deps)."""
+    import html as _h
+    s = payload["summary"]
+    def esc(x):
+        return _h.escape(str(x), quote=False)
+    sev_cards = "".join(
+        '<div class="card %s"><div class="v">%d</div><div class="l">%s</div></div>'
+        % (k, s.get(k, 0), t)
+        for k, t in (("critical", "严重"), ("major", "重要"), ("minor", "次要"), ("info", "提示")))
+    body = ""
+    if s["total"] == 0:
+        body = '<div class="ok">✅ 通过：未发现任何问题（scope=%s，共 %d 个文件）。</div>' % (
+            esc(payload["scope"]), len(payload["scope_files"]))
+    else:
+        for sev, label, cls in (("critical", "严重", "red"), ("major", "重要", "orange"),
+                                ("minor", "次要", "yellow"), ("info", "提示", "gray")):
+            group = [i for i in payload["issues"] if i["severity"] == sev]
+            if not group:
+                continue
+            items = "".join(
+                '<li><span class="cs">%s</span> <code>%s:%d</code> — %s%s</li>'
+                % (esc(i["csId"]), esc(i["file"]), i["line"], esc(i["message"]),
+                   ('<div class="snip">%s</div>' % esc(i["snippet"])) if i.get("snippet") else "")
+                for i in group)
+            body += '<h3 class="%s">%s（%d）</h3><ul>%s</ul>' % (cls, label, len(group), items)
+    if payload["engine_errors"]:
+        body += '<h3>检查模块提示</h3><ul>%s</ul>' % "".join(
+            '<li>%s</li>' % esc(e["reason"][:200]) for e in payload["engine_errors"])
+    return """<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8">
+<title>codespot 扫描报告</title><style>
+body{font-family:-apple-system,'PingFang SC','Segoe UI',sans-serif;margin:0;background:#f6f8fa;color:#1f2328}
+.wrap{max-width:920px;margin:0 auto;padding:40px 24px}
+h1{font-size:24px} h3{margin:22px 0 8px}
+.meta{color:#59636e;font-size:13px}
+.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:14px 0}
+.card{background:#fff;border:1px solid #d1d9e0;border-radius:10px;padding:12px;text-align:center}
+.card .v{font-size:22px;font-weight:800}
+.card .l{font-size:11px;color:#59636e}
+.red .v{color:#cf222e}.orange .v{color:#bc4c00}.yellow .v{color:#9a6700}.gray .v{color:#57606a}
+ul{padding-left:18px}li{margin:6px 0;font-size:13.5px}
+.cs{background:#eff2f5;border-radius:4px;padding:1px 6px;font-weight:600;font-size:12.5px}
+code{background:#eff2f5;padding:1px 5px;border-radius:4px;font-size:12.5px}
+.snip{color:#59636e;font-family:ui-monospace,Menlo,monospace;font-size:12px;margin:3px 0 0}
+.ok{background:#e6f4ea;color:#1a7f37;border-radius:10px;padding:14px;font-weight:600}
+</style></head><body><div class="wrap">
+<h1>codespot 扫描报告</h1>
+<p class="meta">时间 %s · 范围 %s（%d 个文件）</p>
+<div class="cards">%s</div>
+%s
+<p class="meta">由 codespot 生成 · 发现仅为扫描结果，处置由使用者决定</p>
+</div></body></html>""" % (
+        esc(payload["generatedAt"]), esc(payload["scope"]), len(payload["scope_files"]),
+        sev_cards, body)
+
+
 def _write_reports(root, payload):
     dot = os.path.join(root, CODESPOT_DIR)
     with open(os.path.join(dot, REPORT_JSON), "w", encoding="utf-8") as f:
         json.dump(payload, f, ensure_ascii=False, indent=1)
     with open(os.path.join(dot, REPORT_MD), "w", encoding="utf-8") as f:
         f.write(render_md(payload) + "\n")
+    with open(os.path.join(dot, "report.html"), "w", encoding="utf-8") as f:
+        f.write(render_html(payload))
+
+
+def ensure_semgrep_rules():
+    """Ensure ~/.codespot/semgrep-rules exists (shallow clone of OSS rules)."""
+    rules = os.path.expanduser("~/.codespot/semgrep-rules")
+    git = shutil.which("git")
+    if not git:
+        sys.stderr.write("codespot: git not found — semgrep rules not installed\n")
+        return False
+    if os.path.isdir(rules):
+        return True  # exists; refresh is update-rules' job
+    print("setup: cloning semgrep rules (offline defaults)...")
+    r = subprocess.run([git, "clone", "--depth", "1", "-q",
+                        "https://github.com/semgrep/semgrep-rules", rules],
+                       capture_output=True, text=True, timeout=600)
+    if r.returncode != 0:
+        sys.stderr.write("codespot: semgrep rules clone failed — semgrep will use "
+                         "--config auto (online) as fallback\n")
+        return False
+    return True
 
 
 def do_setup(args):
     if args.offline_dir:
         os.environ["CODESPOT_OFFLINE_DIR"] = os.path.abspath(args.offline_dir)
     try:
-        setup_engine.setup_all(only=args.engines or None)
+        results = setup_engine.setup_all(only=args.engines or None)
     except RuntimeError as e:
         sys.stderr.write("codespot setup: %s\n" % e)
         return 2
+    if results and "semgrep" in results:
+        ensure_semgrep_rules()
     return 0
 
 
@@ -276,7 +358,8 @@ def do_scope(args):
 
 def do_report(args):
     root = repo_root(args)
-    path = os.path.join(root, CODESPOT_DIR, REPORT_JSON)
+    name = "report.html" if getattr(args, "html", False) else REPORT_JSON
+    path = os.path.join(root, CODESPOT_DIR, name)
     if not os.path.isfile(path):
         sys.stderr.write("codespot report: no report found (run codespot scan first)\n")
         return 2
@@ -316,6 +399,28 @@ def do_show(args):
             print("      > %s" % i["snippet"].replace("\n", " ")[:160])
     if len(issues) > len(shown):
         print("\n… 其余 %d 条未显示（用 --all 或收窄过滤条件）" % (len(issues) - len(shown)))
+    return 0
+
+
+def do_update_rules(args):
+    """Refresh ~/.codespot/semgrep-rules (git pull, fallback re-clone)."""
+    rules = os.path.expanduser("~/.codespot/semgrep-rules")
+    git = shutil.which("git")
+    if not git:
+        sys.stderr.write("codespot update-rules: git not found\n")
+        return 2
+    if os.path.isdir(os.path.join(rules, ".git")):
+        r = subprocess.run([git, "-C", rules, "pull", "--ff-only"],
+                           capture_output=True, text=True, timeout=600)
+    else:
+        shutil.rmtree(rules, ignore_errors=True)
+        r = subprocess.run([git, "clone", "--depth", "1", "-q",
+                            "https://github.com/semgrep/semgrep-rules", rules],
+                           capture_output=True, text=True, timeout=600)
+    if r.returncode != 0:
+        sys.stderr.write("codespot update-rules failed: %s\n" % (r.stderr or r.stdout).strip()[:300])
+        return 2
+    print("update-rules: semgrep rules refreshed (%s)" % rules)
     return 0
 
 
@@ -400,11 +505,12 @@ def do_update_db(args):
                 ok.append(eco)
             elif r.returncode not in (0, 1):
                 failed.append(eco)
-                sys.stderr.write("codespot update-db: %s failed (exit %s)\n"
-                                 % (eco, r.returncode))
+                sys.stderr.write("codespot update-db: %s failed (exit %s): %s\n"
+                                 % (eco, r.returncode, r.stderr.strip()[-300:]))
             else:
                 failed.append(eco)
-                sys.stderr.write("codespot update-db: %s db not downloaded\n" % eco)
+                sys.stderr.write("codespot update-db: %s db not downloaded: %s\n"
+                                 % (eco, r.stderr.strip()[-300:]))
     print("update-db: OSV offline databases refreshed for: %s%s"
           % (", ".join(ok) or "(none)", ", failed: " + ", ".join(failed) if failed else ""))
     return 0 if not failed else 2
@@ -615,6 +721,7 @@ def main():
     sp.set_defaults(fn=do_scan)
 
     sp = sub.add_parser("report", help="print last report.json")
+    sp.add_argument("--html", action="store_true", help="print report.html instead")
     sp.set_defaults(fn=do_report)
 
     sp = sub.add_parser("show", help="browse issue details from the last report")
@@ -627,6 +734,9 @@ def main():
 
     sp = sub.add_parser("update-db", help="download/refresh the local OSV vulnerability DB (enables offline dependency scans)")
     sp.set_defaults(fn=do_update_db)
+
+    sp = sub.add_parser("update-rules", help="refresh local semgrep rules (offline defaults)")
+    sp.set_defaults(fn=do_update_rules)
 
     sp = sub.add_parser("ai-scan", help="absorb agent-written AI review results into the last report")
     sp.add_argument("mode", nargs="?", default="absorb", choices=["absorb"])

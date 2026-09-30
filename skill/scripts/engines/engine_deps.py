@@ -79,8 +79,16 @@ def main():
         return
 
     cmd = [binary, "scan", "source", "--allow-no-lockfiles", "-f", "json"]
-    if offline_db_available():
-        cmd += ["--offline-vulnerabilities"]
+    # online by default (freshest data); offline is an explicit opt-in
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from common import load_project_config
+    if (load_project_config().get("osv_offline") is True
+            or os.environ.get("CODESPOT_OSV_OFFLINE") == "1"):
+        if offline_db_available():
+            cmd += ["--offline-vulnerabilities"]
+        else:
+            sys.stderr.write("codespot-deps: osv_offline requested but no local DB "
+                             "(run codespot update-db) — falling back to online\n")
     for m in manifests:
         cmd += ["-L", m]
     try:
