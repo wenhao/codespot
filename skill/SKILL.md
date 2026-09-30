@@ -21,7 +21,7 @@ description: Local static code scanning for AI-generated code. Use whenever the 
    `--scope`：`auto`（默认）/ `uncommitted` / `unpushed` / `ref:<ref>`（评审特定基线以来的改动）/ `all`。
 3. **读报告**：读 `.codespot/report.json`。`engine_errors` 非空时如实说明哪些引擎失败，不要假装扫描完整。
 4. **AI 语义审查**（增量档位默认开启：uncommitted / unpushed / ref 自动包含；全量扫描（scope=all，含 auto 降级）默认跳过并向用户转述 CLI 提示——"全量扫描已跳过 AI 审查，如需开启可 `--engine ai` 重跑或在 config 设 `rules.ai_review.enabled`"。另两种跳过情形：用户明确说"只扫不审"；config 已关闭 ai_review。未跳过时按 4a~4e 执行）：
-   - **4a 准备**：扫描已自动产出 `.codespot/ai-plan.json`（目标文件、输出 schema、审查重点、超限分批指引）；单独补跑用 `codespot scan --engine ai`。同时按当前 scope 的基线解析 `git diff --unified=0`，建立每个目标文件的**变更行区间清单**（uncommitted → 对 HEAD；unpushed → 对 upstream 跟踪分支；ref → 对该 ref）。行号核对与告警筛选都以这份清单为准。
+   - **4a 准备**：扫描已自动产出 `.codespot/ai-plan.json`（目标文件、输出 schema、审查重点、**bundles 语义分组**、超限分轮指引）；单独补跑用 `codespot scan --engine ai`。同时按当前 scope 的基线解析 `git diff --unified=0`，建立每个目标文件的**变更行区间清单**（uncommitted → 对 HEAD；unpushed → 对 upstream 跟踪分支；ref → 对该 ref）。行号核对与告警筛选都以这份清单为准。**评审以 bundle 为单位**：plan 的 `bundles` 已按"同目录 + import 共现"把相关文件聚组——逐 bundle 评审，bundle 内文件互为上下文（跨文件契约核对以 bundle 为单位），完成一个 bundle 再下一个；超限时按 bundle 边界分轮。
    - **4b 独立评审**：逐 hunk 覆盖全部变更区间，先通读改动及其所属方法/调用链，形成自己的缺陷判断。**不要以 plan 为分析起点**——先读 plan 会先入为主、抑制独立发现。检查清单：
      - 空值/解引用：可空返回值、自动拆箱、Map.get 结果、Optional 误用；
      - 异常路径：吞异常、中断标志未恢复、错误上下文丢失；
@@ -34,8 +34,8 @@ description: Local static code scanning for AI-generated code. Use whenever the 
      - 死代码残留：unused imports、未用变量。
      - 其他性能/安全/可维护性等问题。
    - **4c 对照 plan 补充**：现在才读 ai-plan.json 交叉核对。plan 中指向**缺陷类**问题（空值/异常/泄漏/并发/边界/逻辑/安全）而自己未发现的，且位置落在该文件变更行区间 ±10 行内 → 核实后补入自己的结果；与自己已有发现按「同文件且行号相差 ≤3」判重。plan 中复杂度、风格、文档类告警不采纳。（注意：这是筛选你写入 ai-result.json 的内容；report.json 中静态引擎的原始告警不受此影响。）
-   - **4d 写结果并合并**：每条发现按 schema 写 `.codespot/ai-result.json`（无发现写 `[]`）：
-     - `file:line` **锚定在问题可见的那一行**（解引用发生的行、缺 break 的 case 行、日志语句行）——写之前重读该行，确认与描述一致；禁止用方法签名行或代码块首行顶替；
+   - **4d 写结果并合并**（**证据门槛，精度优先——宁漏报不误报**：每条发现必须有可指认的代码证据（问题行本身或紧邻上下文）；指不出具体证据的推测性意见（如"可能有并发问题"但说不清交错路径）一律不写；confidence=low 且无直接证据的发现**直接丢弃**，不降级保留）：每条发现按 schema 写 `.codespot/ai-result.json`（无发现写 `[]`）：
+     - `file:line` **锚定在问题可见的那一行**（解引用发生的行、缺 break 的 case 行、日志语句行）——**提交前必须重读该行**：行内容与描述不符时**必须重新定位**到真正的问题可见行，无法定位则放弃该条；禁止用方法签名行或代码块首行顶替（硬性要求，违反即不提交该条）；
      - `severity` 按实际影响给单一级别：数据错误/安全/崩溃=critical，功能缺陷=major，改进建议=minor；
      - `confidence` 必填，不确定用 low；
      - `message` 给出依据（为什么是问题），`snippet` 摘问题行。
