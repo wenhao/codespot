@@ -330,23 +330,61 @@ def do_update_db(args):
         sys.stderr.write("codespot update-db: osv-scanner not installed (run codespot setup)\n")
         return 2
     import tempfile
-    with tempfile.TemporaryDirectory(prefix="codespot-db-") as tmpd:
-        lock = os.path.join(tmpd, "requirements.txt")
-        with open(lock, "w") as f:
-            f.write("# seed lockfile for database download\n")
-        cmd = [exe, "scan", "source", "--download-offline-databases",
-               "--offline-vulnerabilities", "--allow-no-lockfiles", "-L", lock]
-        try:
-            r = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
-        except subprocess.TimeoutExpired:
-            sys.stderr.write("codespot update-db: download timed out\n")
-            return 2
-        if r.returncode not in (0, 1):
-            sys.stderr.write("codespot update-db failed (exit %s): %s\n"
-                             % (r.returncode, r.stderr.strip()[:300]))
-            return 2
-    print("update-db: local OSV database refreshed (offline scans will now work)")
-    return 0
+    # one seed lockfile per ecosystem — the offline DB is downloaded per-ecosystem
+    # ecosystems with a working seed format (osv-scanner 2.6: maven/packagist
+    # seeds are rejected without real project structure — skipped here)
+    # ecosystems whose offline DB can be seeded without a real project.
+    # (maven/packagist/rubygems/nuget seeds are rejected by osv-scanner 2.6
+    #  without real package entries — add real ones here if ever needed.)
+    seeds = {
+        "PyPI": ("requirements.txt", "text"),
+        "npm": ("package-lock.json", "npm"),
+        "Go": ("go.mod", "gomod"),
+    }
+    ok, failed = [], []
+    for eco, (fname, kind) in seeds.items():
+        with tempfile.TemporaryDirectory(prefix="codespot-db-") as tmpd:
+            seed = os.path.join(tmpd, fname)
+            if kind == "gomod":
+                with open(seed, "w") as f:
+                    f.write('module example.com/seed\n\ngo 1.21\n')
+            if kind == "npm":
+                # needs >=1 real package entry, else "No package sources found"
+                with open(seed, "w") as f:
+                    f.write('{"name":"seed","version":"1.0.0","lockfileVersion":3,'
+                            '"packages":{"node_modules/semver":{"version":"7.6.0"}}}')
+            elif kind == "rubygems":
+                with open(seed, "w") as f:
+                    f.write('GEM\n  remote: https://rubygems.org/\n  specs:\n\nPLATFORMS\n  ruby\n')
+            else:
+                with open(seed, "w") as f:
+                    f.write("# seed lockfile for %s database download\n" % eco)
+            cmd = [exe, "scan", "source", "--download-offline-databases",
+                   "--offline-vulnerabilities", "--allow-no-lockfiles", "-f", "json", seed]
+            try:
+                r = subprocess.run(cmd, capture_output=True, text=True, timeout=900, cwd=tmpd)
+            except subprocess.TimeoutExpired:
+                failed.append(eco)
+                sys.stderr.write("codespot update-db: %s download timed out\n" % eco)
+                continue
+            # osv-scanner 2.6 quirk: the DB lands in the cache even when the process
+            # later exits 127 (post-download processing error) — verify by presence
+            import glob as _glob
+            bases = (os.path.expanduser("~/Library/Caches/osv-scalibr"),
+                     os.path.expanduser(os.path.join(os.environ.get("XDG_CACHE_HOME", "~/.cache"), "osv-scalibr")))
+            landed = any(_glob.glob(os.path.join(b, eco + "*", "*.zip")) for b in bases)
+            if landed:
+                ok.append(eco)
+            elif r.returncode not in (0, 1):
+                failed.append(eco)
+                sys.stderr.write("codespot update-db: %s failed (exit %s)\n"
+                                 % (eco, r.returncode))
+            else:
+                failed.append(eco)
+                sys.stderr.write("codespot update-db: %s db not downloaded\n" % eco)
+    print("update-db: OSV offline databases refreshed for: %s%s"
+          % (", ".join(ok) or "(none)", ", failed: " + ", ".join(failed) if failed else ""))
+    return 0 if not failed else 2
 
 
 def do_ai_scan(args):

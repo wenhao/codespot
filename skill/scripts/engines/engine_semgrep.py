@@ -119,11 +119,7 @@ def main():
         configs = [override]
     else:
         langs = {e.get("language") for e in entries if e.get("language")}
-        configs = offline_rules_for(sorted(langs))
-        if configs:
-            sys.stderr.write("codespot-semgrep: using offline rules from %s\n" % ", ".join(configs))
-        else:
-            configs = ["auto"]
+        configs = offline_rules_for(sorted(langs)) or ["auto"]
     if not configs:
         write_result(a.out, [])
         return
@@ -133,10 +129,43 @@ def main():
         cmd += ["--config", c]
     cmd += paths
     try:
-        r = subprocess.run(cmd, capture_output=True, text=True, timeout=600, cwd=a.workdir)
+        r = subprocess.run(cmd, capture_output=True, text=True, timeout=900, cwd=a.workdir)
     except subprocess.TimeoutExpired:
-        fail("semgrep timed out after 600s")
-    if r.returncode not in (0, 1):
+        r = None
+    if r is None or (r.returncode >= 2 and "auto" in configs):
+        alt = offline_rules_for(sorted({e.get("language") or "" for e in entries}))
+        if alt and "auto" in configs:
+            sys.stderr.write("codespot-semgrep: auto ruleset failed — retrying with local rules %s\n"
+                             % ", ".join(alt))
+            cmd2 = [c for c in cmd]
+            configs2 = []
+            it = iter(cmd2)
+            rebuilt = []
+            skip_next = False
+            for c in cmd2:
+                if skip_next:
+                    skip_next = False
+                    continue
+                if c == "--config":
+                    skip_next = True
+                    continue
+                rebuilt.append(c)
+            for c in alt:
+                rebuilt += ["--config", c]
+            rebuilt.append("--no-git-ignore")
+            try:
+                r = subprocess.run(rebuilt, capture_output=True, text=True, timeout=900, cwd=a.workdir)
+            except subprocess.TimeoutExpired:
+                fail("semgrep timed out after 900s (auto mode fetches rule packs online; "
+                     "install offline rules via a release bundle or point semgrep_config at a local rules dir)")
+            if r.returncode not in (0, 1):
+                fail("semgrep failed (exit %s): %s" % (r.returncode, r.stderr.strip()[:300]))
+        elif r is None:
+            fail("semgrep timed out after 900s (auto mode fetches rule packs online; "
+                 "install offline rules via a release bundle or point semgrep_config at a local rules dir)")
+        else:
+            fail("semgrep failed (exit %s): %s" % (r.returncode, r.stderr.strip()[:300]))
+    elif r.returncode not in (0, 1):
         fail("semgrep failed (exit %s): %s" % (r.returncode, r.stderr.strip()[:300]))
     try:
         data = json.loads(r.stdout or "{}")
