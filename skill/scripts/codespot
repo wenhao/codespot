@@ -333,19 +333,42 @@ def do_update_db(args):
     # one seed lockfile per ecosystem — the offline DB is downloaded per-ecosystem
     # ecosystems with a working seed format (osv-scanner 2.6: maven/packagist
     # seeds are rejected without real project structure — skipped here)
-    # ecosystems whose offline DB can be seeded without a real project.
-    # (maven/packagist/rubygems/nuget seeds are rejected by osv-scanner 2.6
-    #  without real package entries — add real ones here if ever needed.)
+    # seeds must contain a real package entry — empty shells are rejected by
+    # osv-scanner 2.6 ("No package sources found" / exit 127)
     seeds = {
         "PyPI": ("requirements.txt", "text"),
         "npm": ("package-lock.json", "npm"),
         "Go": ("go.mod", "gomod"),
+        "Maven": ("pom.xml", "maven"),
+        "RubyGems": ("Gemfile.lock", "rubygems"),
+        "NuGet": ("dummy.csproj", "csproj"),
+        "Packagist": ("composer.lock", "packagist"),
     }
     ok, failed = [], []
     for eco, (fname, kind) in seeds.items():
         with tempfile.TemporaryDirectory(prefix="codespot-db-") as tmpd:
             seed = os.path.join(tmpd, fname)
-            if kind == "gomod":
+            if kind == "maven":
+                with open(seed, "w") as f:
+                    f.write('<?xml version="1.0"?>\n<project xmlns="http://maven.apache.org/POM/4.0.0">\n'
+                            '  <modelVersion>4.0.0</modelVersion>\n  <groupId>seed</groupId>'
+                            '<artifactId>seed</artifactId><version>1.0</version>\n  <dependencies>\n'
+                            '    <dependency><groupId>junit</groupId><artifactId>junit</artifactId>'
+                            '<version>4.13.2</version></dependency>\n  </dependencies>\n</project>\n')
+            elif kind == "rubygems":
+                with open(seed, "w") as f:
+                    f.write('GEM\n  remote: https://rubygems.org/\n  specs:\n'
+                            '    rack (3.0.8)\n\nPLATFORMS\n  ruby\n\nDEPENDENCIES\n  rack\n')
+            elif kind == "csproj":
+                with open(seed, "w") as f:
+                    f.write('<Project Sdk="Microsoft.NET.Sdk">\n'
+                            '  <PropertyGroup><TargetFramework>net8.0</TargetFramework></PropertyGroup>\n'
+                            '  <ItemGroup><PackageReference Include="Newtonsoft.Json" Version="13.0.3" />'
+                            '</ItemGroup>\n</Project>\n')
+            elif kind == "packagist":
+                with open(seed, "w") as f:
+                    f.write('{"packages":[{"name":"psr/log","version":"3.0.0"}],"packages-dev":[]}\n')
+            elif kind == "gomod":
                 with open(seed, "w") as f:
                     f.write('module example.com/seed\n\ngo 1.21\n')
             if kind == "npm":
