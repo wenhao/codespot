@@ -260,85 +260,106 @@ def _now():
 def render_html(payload):
     """codespot-branded self-contained HTML report (validation-report styling)."""
     import html as _h
-    s = payload["summary"]
 
     def esc(x):
         return _h.escape(str(x), quote=False)
 
-    sev_meta = (("critical", "严重", "red"), ("major", "重要", "orange"),
-                ("minor", "次要", "yellow"), ("info", "提示", "gray"))
+    s = payload["summary"]
     cards = "".join(
-        '<div class="card"><div class="v %s">%d</div><div class="l">%s</div></div>'
-        % (cls, s.get(k, 0), label)
-        for k, label, cls in (("critical", "严重", "red"), ("major", "重要", "orange"),
-                              ("minor", "次要", "yellow"), ("info", "提示", "gray")))
-    body = ""
-    if s["total"] == 0:
-        body = ('<div class="ok">✅ 通过：未发现任何问题（scope=%s，共 %d 个文件）。'
-                '</div>' % (esc(payload["scope"]), len(payload["scope_files"])))
-    else:
-        for k, label, cls in sev_meta:
-            group = [i for i in payload["issues"] if i["severity"] == k]
-            if not group:
-                continue
-            items = "".join(
-                '<li><span class="cs">%s</span> <code>%s:%d</code> — %s'
-                '%s</li>' % (esc(i["csId"]), esc(i["file"]), i["line"],
-                             esc(i["message"]),
-                             ('<div class="snip">%s</div>' % esc(i["snippet"]))
-                             if i.get("snippet") else "")
-                for i in group)
-            emoji = {"critical": "🔴", "major": "🟠", "minor": "🟡", "info": "ℹ️"}.get(k, "")
-            body += '<h3><span class="dot %s"></span>%s %s（%d）</h3><ul>%s</ul>' % (
-                cls, emoji, label, len(group), items)
+        '<div class="card"><div class="v {cls}">{n}</div><div class="l">{label}</div></div>'
+        .replace("{cls}", cls).replace("{n}", str(s.get(key, 0)))
+        .replace("{label}", label)
+        for key, label, cls in (("critical", "严重", "red"), ("major", "重要", "orange"),
+                                ("minor", "次要", "yellow"), ("info", "提示", "gray")))
+
+    sections = []
+    for key, label, emoji, cls in (("critical", "严重", "🔴", "red"),
+                                   ("major", "重要", "🟠", "orange"),
+                                   ("minor", "次要", "🟡", "yellow"),
+                                   ("info", "提示", "ℹ️", "gray")):
+        group = [i for i in payload["issues"] if i["severity"] == key]
+        if not group:
+            continue
+        lis = []
+        for i in group:
+            snip = ('<div class="snip">%s</div>' % _h.escape(i["snippet"])) \
+                if i.get("snippet") else ""
+            lis.append(
+                "<li><span class=\"cs\">CS</span> <code>%s:%d</code> — %s%s</li>"
+                % (_h.escape(i["file"]), i["line"], _h.escape(i["message"]), snip))
+        sections.append(
+            '<h3><span class="dot %s"></span>%s %s（%d）</h3><ul>%s</ul>'
+            % (cls, emoji, label, len(group), "".join(lis)))
     if payload["engine_errors"]:
-        body += '<h3>⚠️ 检查模块提示</h3><ul class="warn">%s</ul>' % "".join(
-            '<li>%s</li>' % esc(e["reason"][:200]) for e in payload["engine_errors"])
-    tpl = """<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8">
+        lis = "".join("<li>%s</li>" % _h.escape(e["reason"][:200])
+                      for e in payload["engine_errors"])
+        sections.append('<h3>⚠️ 检查模块提示</h3><ul class="warn">%s</ul>' % lis)
+
+    if s["total"] == 0:
+        body = ('<div class="ok">✅ 通过：未发现任何问题（scope=%s，共 %d 个文件）。</div>'
+                % (_h.escape(payload["scope"]), len(payload["scope_files"])))
+    else:
+        body = "".join(sections)
+
+    tpl = """<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>codespot 扫描报告</title><style>
+<title>codespot 扫描报告</title>
+<style>
 body{margin:0;font-family:-apple-system,'PingFang SC','Segoe UI',sans-serif;
-     background:linear-gradient(180deg,#0d3b66,#f6f8fa 220px);color:#1f2328}
+     background:linear-gradient(180deg,#0d3b66 0,#f6f8fa 220px);color:#1f2328}
 .wrap{max-width:960px;margin:0 auto;padding:40px 24px 60px}
 .hero{color:#fff;margin-bottom:26px}
 .hero h1{font-size:26px;margin:0}
 .hero .meta{color:rgba(255,255,255,.85);font-size:13px;margin-top:6px}
-.hero .meta code{background:rgba(255,255,255,.15);color:#fff}
 .cards{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:18px 0}
-.card{background:#fff;border:1px solid #d1d9e0;border-radius:12px;padding:14px;text-align:center;box-shadow:0 1px 4px rgba(13,59,102,.08)}
+.card{background:#fff;border:1px solid #d1d9e0;border-radius:12px;padding:14px;
+      text-align:center;box-shadow:0 1px 4px rgba(13,59,102,.08)}
 .card .v{font-size:26px;font-weight:800}
 .card .l{font-size:11.5px;color:#59636e;margin-top:2px}
-.v.red{color:#cf222e}.v.orange{color:#bc4c00}.v.yellow{color:#9a6700}.v.gray{color:#57606a}
+.v.red{color:#cf222e}.v.orange{color:#bc4c00}
+.v.yellow{color:#9a6700}.v.gray{color:#57606a}
 h3{font-size:15px;margin:26px 0 10px;display:flex;align-items:center;gap:8px}
 .dot{width:10px;height:10px;border-radius:50%;display:inline-block}
 .dot.red{background:#cf222e}.dot.orange{background:#bc4c00}
 .dot.yellow{background:#9a6700}.dot.gray{background:#57606a}
 ul{list-style:none;padding:0;margin:0}
-li{background:#fff;border:1px solid #e4e9ee;border-left:4px solid #d1d9e0;border-radius:8px;
-   padding:10px 14px;margin:8px 0;font-size:13.5px}
+li{background:#fff;border:1px solid #e4e9ee;border-left:4px solid #d1d9e0;
+   border-radius:8px;padding:10px 14px;margin:8px 0;font-size:13.5px}
 li:hover{border-left-color:#0969da}
-.cs{background:#eff2f5;border-radius:5px;padding:1px 7px;font-weight:700;font-size:12px;margin-right:4px}
+.cs{background:#eff2f5;border-radius:5px;padding:1px 7px;font-weight:700;
+    font-size:12px;margin-right:4px}
 code{background:#eff2f5;padding:1px 6px;border-radius:4px;font-size:12.5px}
 .snip{color:#59636e;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;
       margin-top:5px;white-space:pre-wrap;word-break:break-all}
 .ok{background:#e6f4ea;color:#1a7f37;border-radius:10px;padding:16px;font-weight:600}
 .warn li{border-left-color:#d4a72c;background:#fffdf5;font-size:12.5px}
 .meta{color:#59636e;font-size:12px;margin-top:40px;text-align:center}
-</style></head><body><div class="wrap">
-<div class="hero"><h1>codespot 扫描报告</h1>
-<div class="meta">时间 {esc(payload["generatedAt"])} · 范围 {esc(payload["scope"])}（{len(payload["scope_files"])} 个文件）· 由 codespot 本地生成</div></div>
-<div class="cards">{cards}</div>
-{body}
-<p class="meta">发现仅为扫描结果，处置由使用者决定 · 本报告由 codespot 自动生成（人读版 report.md / Agent 版 report.json 同目录）</p>
-</div></body></html>"""
-    return (tpl
-        .replace("{__T0__}", str(esc(payload["generatedAt"])))
-        .replace("{__T1__}", str(esc(payload["scope"])))
-        .replace("{__T2__}", str(len(payload["scope_files"])))
-        .replace("{__T3__}", str(cards))
-        .replace("{__T4__}", str(body))
-    )
-
+</style>
+</head>
+<body>
+<div class="wrap">
+<div class="hero">
+<h1>codespot 扫描报告</h1>
+<div class="meta">时间 __GENERATED__ · 范围 __SCOPE__（__NFILES__ 个文件）· 由 codespot 本地生成</div>
+</div>
+<div class="cards">
+__CARDS__
+</div>
+__BODY__
+<p class="meta">发现仅为扫描结果，处置由使用者决定 · 本报告由 codespot 自动生成</p>
+</div>
+</body>
+</html>"""
+    out = (tpl
+           .replace("__GENERATED__", _h.escape(payload["generatedAt"]))
+           .replace("__SCOPE__", _h.escape(payload["scope"]))
+           .replace("__NFILES__", str(len(payload["scope_files"])))
+           .replace("__CARDS__", cards)
+           .replace("__BODY__", body))
+    return out
 
 
 def _write_reports(root, payload):
