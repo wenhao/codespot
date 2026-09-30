@@ -7,12 +7,12 @@ TBD - created by archiving change add-offline-release-bundles. Update Purpose af
 
 ### Requirement: 离线包内容与结构
 
-`make_bundle.py` SHALL 在单平台产出 `codespot-offline-<version>-<os>-<arch>` 包，内容：① `skill/`（完整载荷）；② `engines/`（该平台全部已装引擎，保持 `<name>-<version>/` 布局与 `.ok` 标记；不支持平台的引擎缺席）；③ `wheels/`（venv 引擎的完整传递依赖 wheel，按 python 大版本分子目录）；④ `offline/osv-db/`（构建时 OSV 本地库缓存）；⑤ `offline/semgrep-rules/`（Semgrep 规则快照，若可提取）；⑥ `install-offline.sh` / `install-offline.bat`；⑦ `THIRD-PARTY-NOTICES`（引擎名-许可-上游源码链接，含 TruffleHog AGPL 源码可得声明）；⑧ `MANIFEST.json`（版本、平台、引擎清单、构建时间）。
+离线包 SHALL 不再包含 `offline/osv-db/`（OSV 离线漏洞库随包移除——依赖扫描在线运行）；其余内容（skill/、engines/、wheels/、offline/semgrep-rules/、安装脚本、NOTICES、MANIFEST）不变。
 
 #### Scenario: 四平台打包产物
 
 - **WHEN** 推送 `v*` tag 触发 release 工作流
-- **THEN** Release 附带 linux-x64 / macos-arm64 / macos-x64 / windows-x64 四个离线包资产
+- **THEN** Release 附带 linux-x64 / macos-arm64 / windows-x64 三个离线包资产，包内无 osv-db 目录
 
 #### Scenario: 许可清单含 AGPL 源码链接
 
