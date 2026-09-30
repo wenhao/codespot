@@ -159,6 +159,7 @@ git clone https://github.com/wenhao/codespot.git && ln -s "$(pwd)/codespot/skill
 | `codespot ai-scan absorb` | 校验并合并 agent 写入的 AI 审查结果到最近报告 |
 | `codespot update-db` | 下载/刷新本地 OSV 漏洞库（启用离线依赖扫描） |
 | `codespot report` | 打印最近一次 report.json |
+| `codespot update-rules` | 刷新本地 Semgrep 规则（离线默认） |
 | `codespot selftest` | 夹具驱动的全引擎回归自检 |
 
 ## 配置

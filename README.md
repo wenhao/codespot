@@ -44,6 +44,14 @@ Traditional scanners don't fit this loop either. They assume a CI pipeline and a
 
 License hygiene was a design constraint from day one. SonarSource analyzers moved to the non-open SSALv1 (which restricts feeding analyzer output to non-bundled AI), so codespot assembles clean-license engines (MIT / Apache / LGPL), downloads them at runtime from official sources, and never bundles or redistributes them.
 
+## OSV online / Semgrep local rules
+
+Dependency scans query osv.dev **online** by default (freshest data). An offline vulnerability DB can be downloaded with `codespot update-db` and enabled via `"osv_offline": true` in `.codespot/config.json` (or env `CODESPOT_OSV_OFFLINE=1`).
+
+Semgrep is the opposite: `codespot setup` clones **local rules** into `~/.codespot/semgrep-rules` and uses them by default — deterministic and fast (no online rule-pack fetches, no 300s timeouts). Refresh with `codespot update-rules`; if the rules dir is missing, semgrep falls back to online `auto`.
+
+**Critical AI recheck**: when findings include criticals, the agent re-verifies each one before presenting fix options — verdicts: confirmed / likely-false-positive / needs-human; likely FPs are excluded from the default fix scope.
+
 ## Quick Start: Scan a repo with codespot
 
 ### 1. Install via your AI agent
@@ -159,6 +167,7 @@ De-duplication is by design: `eslint-plugin-oxlint` disables every ESLint rule t
 | `codespot ai-scan absorb` | Validate & merge agent-written AI review results into the last report |
 | `codespot update-db` | Download/refresh the local OSV vulnerability DB (enables offline dependency scans) |
 | `codespot report` | Print the last report.json |
+| `codespot update-rules` | Refresh local Semgrep rules (offline defaults) |
 | `codespot selftest` | Fixture-based regression across all engines |
 
 ## Configuration
