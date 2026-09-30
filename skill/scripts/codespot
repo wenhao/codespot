@@ -352,12 +352,11 @@ def _write_reports(root, payload):
 
 
 def semgrep_rules_dir():
-    """Rules live inside the skill so they travel with it (gitignored, downloaded
-    by setup / update-rules; shipped pre-seeded in offline bundles)."""
+    """User-level rules cache (~/.codespot/semgrep-rules): first setup clones it
+    from the OSS repo (online), later scans use the cache; update-rules refreshes.
+    Env CODESPOT_SEMGREP_RULES overrides."""
     env_dir = os.environ.get("CODESPOT_SEMGREP_RULES")
-    if env_dir:
-        return env_dir
-    return os.path.join(os.path.dirname(HERE), "rules", "semgrep")
+    return env_dir or os.path.expanduser("~/.codespot/semgrep-rules")
 
 
 def ensure_semgrep_rules():

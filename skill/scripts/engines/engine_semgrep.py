@@ -70,20 +70,12 @@ def offline_db_available():
     return any(glob.glob(os.path.join(b, "*", "*.zip")) for b in bases)
 
 
-def _skill_rules_dir():
-    """<skill>/rules/semgrep — travels with the skill (downloaded by setup)."""
-    here = os.path.dirname(os.path.abspath(__file__))          # skill/scripts/engines
-    skill = os.path.dirname(os.path.dirname(here))             # skill/
-    return os.path.join(skill, "rules", "semgrep")
-
-
 def offline_rules_for(langs):
     """Offline rules dirs (under ~/.codespot/semgrep-rules, shipped by the
     offline bundle) for the requested languages. The repo root contains
     non-rule yamls (template etc.), so only language subdirs are used."""
-    base = os.environ.get("CODESPOT_SEMGREP_RULES") or _skill_rules_dir()
-    if not base or not os.path.isdir(base):
-        base = os.path.expanduser("~/.codespot/semgrep-rules")
+    base = os.environ.get("CODESPOT_SEMGREP_RULES") or os.path.expanduser(
+        "~/.codespot/semgrep-rules")
     if not os.path.isdir(base):
         return []
     dirs = []

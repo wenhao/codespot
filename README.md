@@ -48,7 +48,7 @@ License hygiene was a design constraint from day one. SonarSource analyzers move
 
 Dependency scans always query the live [osv.dev](https://osv.dev) database (network required).
 
-Semgrep is the opposite: its **rules ship inside the skill** (`skill/rules/semgrep`, downloaded by `setup`, refreshed by `codespot update-rules`) and are used by default — deterministic and fast (no online rule-pack fetches, no 300s timeouts). If the rules dir is missing, semgrep falls back to online `auto`.
+Semgrep is the opposite: its **rules are cached locally** (`~/.codespot/semgrep-rules`, downloaded by `setup` on first run, refreshed by `codespot update-rules`) and are used by default — deterministic and fast (no online rule-pack fetches, no 300s timeouts). If the rules dir is missing, semgrep falls back to online `auto`.
 
 **Critical AI recheck**: when findings include criticals, the agent re-verifies each one before presenting fix options — verdicts: confirmed / likely-false-positive / needs-human; likely FPs are excluded from the default fix scope.
 

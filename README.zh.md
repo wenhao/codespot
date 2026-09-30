@@ -116,7 +116,7 @@ git clone https://github.com/wenhao/codespot.git && ln -s "$(pwd)/codespot/skill
 
 升级：`git -C ~/.codespot/src/codespot pull` 后重跑 `setup`；卸载：删除软链与 `~/.codespot/`。
 
-**OSV 在线 / Semgrep 本地规则**：依赖扫描始终**在线**查询 osv.dev（数据最新，需联网）。Semgrep 相反——**规则内置于 skill**（`skill/rules/semgrep`，`setup` 自动下载、`codespot update-rules` 刷新）并默认使用（确定性、快）；规则目录缺失时回退在线 `auto`。
+**OSV 在线 / Semgrep 本地规则**：依赖扫描始终**在线**查询 osv.dev（数据最新，需联网）。Semgrep 相反——**规则缓存在本地**（`~/.codespot/semgrep-rules`，`setup` 首次运行自动下载、`codespot update-rules` 刷新）并默认使用（确定性、快）；规则目录缺失时回退在线 `auto`。
 
 **critical AI 复审**：扫描后若存在 critical 级发现，agent 会在呈现修复选项前逐条复审（确认 / 疑似误报 / 需人工判断）并标注结论。
 
@@ -132,7 +132,7 @@ git clone https://github.com/wenhao/codespot.git && ln -s "$(pwd)/codespot/skill
 | `java` | PMD 7.27 | JRE 8+ | 源码级，无需编译 |
 | `java`（深度，可选） | SpotBugs 4.10 + FindSecBugs 1.14 | mvn/gradle + JDK | 项目不可编译时自动跳过 |
 | `sql` | SQLFluff | python3（venv） | 方言自动探测链 |
-| `semantic` | Semgrep CE 1.177（py3.9 回退 1.136） | python3（venv） | **默认本地规则**（`setup` 自动克隆到 `skill/rules/semgrep`，`codespot update-rules` 刷新）；Go/C#/Kotlin/Ruby/PHP/Rust/Terraform… |
+| `semantic` | Semgrep CE 1.177（py3.9 回退 1.136） | python3（venv） | **默认本地规则**（缓存于 `~/.codespot/semgrep-rules`，`setup` 自动克隆、`codespot update-rules` 刷新）；Go/C#/Kotlin/Ruby/PHP/Rust/Terraform… |
 | `dependencies` | OSV-Scanner 2.6 | 需联网（在线查 osv.dev） | 扫描 requirements/锁文件/pom/go.mod 的已知 CVE |
 | `secrets_deep`（**opt-in**） | TruffleHog 3.97 | — | `--engine trufflehog`；默认 `--no-verification` |
 | `ai_review`（**默认开启**） | AI agent 本身 | — | 计划 → 分析 → `ai-scan absorb`；`rules.ai_review.disabled` 可关；critical 发现默认 AI 复审 |

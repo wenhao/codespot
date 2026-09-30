@@ -37,8 +37,8 @@ jobs:
           java-version: "17"
       - name: Install engines
         run: python skill/scripts/codespot setup
-      - name: Update OSV offline DB
-        run: python skill/scripts/codespot update-db
+      - name: Refresh semgrep rules cache
+        run: python skill/scripts/codespot update-rules
       - name: Build bundle
         shell: bash
         run: |
