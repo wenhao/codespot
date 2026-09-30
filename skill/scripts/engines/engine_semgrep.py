@@ -63,16 +63,35 @@ LANG_RULE_DIRS = {  # target language -> subdir of the semgrep-rules repo
 }
 
 
+def offline_db_available():
+    """True when a local OSV vulnerability DB exists (osv-scalibr cache)."""
+    bases = (os.path.expanduser("~/Library/Caches/osv-scalibr"),
+             os.path.expanduser(os.path.join(os.environ.get("XDG_CACHE_HOME", "~/.cache"), "osv-scalibr")))
+    return any(glob.glob(os.path.join(b, "*", "*.zip")) for b in bases)
+
+
+def _skill_rules_dir():
+    """<skill>/rules/semgrep — travels with the skill (downloaded by setup)."""
+    here = os.path.dirname(os.path.abspath(__file__))          # skill/scripts/engines
+    skill = os.path.dirname(os.path.dirname(here))             # skill/
+    return os.path.join(skill, "rules", "semgrep")
+
+
 def offline_rules_for(langs):
     """Offline rules dirs (under ~/.codespot/semgrep-rules, shipped by the
     offline bundle) for the requested languages. The repo root contains
     non-rule yamls (template etc.), so only language subdirs are used."""
-    base = os.path.expanduser("~/.codespot/semgrep-rules")
+    base = os.environ.get("CODESPOT_SEMGREP_RULES") or _skill_rules_dir()
+    if not base or not os.path.isdir(base):
+        base = os.path.expanduser("~/.codespot/semgrep-rules")
     if not os.path.isdir(base):
         return []
     dirs = []
     for lang in langs:
-        d = os.path.join(base, LANG_RULE_DIRS.get(lang, ""))
+        sub = LANG_RULE_DIRS.get(lang)
+        if not sub:
+            continue  # no offline rules for this language
+        d = os.path.join(base, sub)
         if os.path.isdir(d) and d not in dirs:
             dirs.append(d)
     return dirs
@@ -94,6 +113,34 @@ def rule_url(check_id, metadata):
     if refs:
         return refs[0]
     return DEFAULT_RULESET_URL
+
+
+def to_issues(workdir, data):
+    """Merge already-parsed semgrep JSON dicts -> unified issues."""
+    issues = []
+    for v in data.get("results", []):
+        extra = v.get("extra", {})
+        meta = extra.get("metadata", {}) or {}
+        path = v.get("path", "")
+        rel = os.path.relpath(path, workdir) if os.path.isabs(path) else path
+        sev = SEV.get(extra.get("severity", "WARNING"), "minor")
+        cwe = None
+        cwes = meta.get("cwe")
+        if isinstance(cwes, str):
+            cwe = cwes.split(":")[0].split(",")[0].strip().lstrip("CWE-").strip() or None
+        elif isinstance(cwes, list) and cwes:
+            cwe = str(cwes[0]).split(":")[0].split(",")[0].strip().lstrip("CWE-").strip() or None
+        check_id = v.get("check_id", "unknown")
+        issues.append(make_issue(
+            tool="semgrep", language=rel.rsplit(".", 1)[-1] if "." in rel else "*",
+            rule=check_id, rule_url=rule_url(check_id, meta),
+            severity=sev, file=rel.replace(os.sep, "/"),
+            line=(v.get("start") or {}).get("line", 1),
+            column=(v.get("start") or {}).get("col", 1),
+            message=extra.get("message", ""),
+            snippet=(extra.get("lines") or "").strip()[:160],
+            cwe=cwe))
+    return issues
 
 
 def main():
@@ -118,66 +165,54 @@ def main():
     if override:
         configs = [override]
     else:
-        langs = {e.get("language") for e in entries if e.get("language")}
-        configs = offline_rules_for(sorted(langs)) or ["auto"]
-    if not configs:
+        # offline rules (bundle): run one semgrep per language dir — a single
+        # bad/unsupported rule file then only knocks out its own language
+        langs = sorted({e.get("language") for e in entries if e.get("language")})
+        dirs = offline_rules_for(langs)
+        if dirs:
+            runs = [(os.path.basename(d), d) for d in dirs]
+            sys.stderr.write("codespot-semgrep: using offline rules from %s\n" % ", ".join(dirs))
+        else:
+            runs = [("auto", "auto")]
+    if not runs:
         write_result(a.out, [])
         return
 
-    cmd = [semgrep, "scan", "--json", "--quiet", "--timeout-threshold", "3"]
-    for c in configs:
-        cmd += ["--config", c]
-    cmd += paths
+    results, errors = [], []
+    for label, config in runs:
+        cmd = [semgrep, "scan", "--json", "--quiet", "--timeout-threshold", "3",
+               "--config", config]
+        cmd += paths
+        try:
+            r = subprocess.run(cmd, capture_output=True, text=True, timeout=900, cwd=a.workdir)
+        except subprocess.TimeoutExpired:
+            errors.append("%s: timed out" % label)
+            continue
+        if r.returncode not in (0, 1):
+            errors.append("%s: exit %s — %s" % (label, r.returncode, r.stderr.strip()[:200]))
+            continue
+        try:
+            results.append(json.loads(r.stdout or "{}"))
+        except ValueError:
+            errors.append("%s: invalid JSON" % label)
+    for e in errors:
+        sys.stderr.write("codespot-semgrep: %s\n" % e)
+    data = {"results": [v for d in results for v in d.get("results", [])]}
     try:
-        r = subprocess.run(cmd, capture_output=True, text=True, timeout=900, cwd=a.workdir)
-    except subprocess.TimeoutExpired:
-        r = None
-    if r is None or (r.returncode >= 2 and "auto" in configs):
-        alt = offline_rules_for(sorted({e.get("language") or "" for e in entries}))
-        if alt and "auto" in configs:
-            sys.stderr.write("codespot-semgrep: auto ruleset failed — retrying with local rules %s\n"
-                             % ", ".join(alt))
-            cmd2 = [c for c in cmd]
-            configs2 = []
-            it = iter(cmd2)
-            rebuilt = []
-            skip_next = False
-            for c in cmd2:
-                if skip_next:
-                    skip_next = False
-                    continue
-                if c == "--config":
-                    skip_next = True
-                    continue
-                rebuilt.append(c)
-            for c in alt:
-                rebuilt += ["--config", c]
-            rebuilt.append("--no-git-ignore")
-            try:
-                r = subprocess.run(rebuilt, capture_output=True, text=True, timeout=900, cwd=a.workdir)
-            except subprocess.TimeoutExpired:
-                fail("semgrep timed out after 900s (auto mode fetches rule packs online; "
-                     "install offline rules via a release bundle or point semgrep_config at a local rules dir)")
-            if r.returncode not in (0, 1):
-                fail("semgrep failed (exit %s): %s" % (r.returncode, r.stderr.strip()[:300]))
-        elif r is None:
-            fail("semgrep timed out after 900s (auto mode fetches rule packs online; "
-                 "install offline rules via a release bundle or point semgrep_config at a local rules dir)")
-        else:
-            fail("semgrep failed (exit %s): %s" % (r.returncode, r.stderr.strip()[:300]))
-    elif r.returncode not in (0, 1):
-        fail("semgrep failed (exit %s): %s" % (r.returncode, r.stderr.strip()[:300]))
-    try:
-        data = json.loads(r.stdout or "{}")
-    except ValueError:
-        fail("semgrep produced invalid JSON")
+        write_result(a.out, to_issues(a.workdir, data))
+    except Exception as ex:  # one malformed rule result must not kill the adapter
+        sys.stderr.write("codespot-semgrep: result parse error: %s\n" % ex)
+    return
 
+def parse_output(stdout, workdir):
+    """semgrep JSON -> unified issues (single-object or merged multi-run dict)."""
+    data = json.loads(stdout or "{}")
     issues = []
     for v in data.get("results", []):
         extra = v.get("extra", {})
         meta = extra.get("metadata", {}) or {}
         path = v.get("path", "")
-        rel = os.path.relpath(path, a.workdir) if os.path.isabs(path) else path
+        rel = os.path.relpath(path, workdir) if os.path.isabs(path) else path
         sev = SEV.get(extra.get("severity", "WARNING"), "minor")
         cwe = None
         cwes = meta.get("cwe")
@@ -195,7 +230,7 @@ def main():
             message=extra.get("message", ""),
             snippet=(extra.get("lines") or "").strip()[:160],
             cwe=cwe))
-    write_result(a.out, issues)
+    return issues
 
 
 if __name__ == "__main__":

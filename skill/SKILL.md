@@ -43,6 +43,7 @@ description: Local static code scanning for AI-generated code. Use whenever the 
    - **4e 补漏复查**（absorb 前的最后一道）：列出零发现的文件与 hunk，快速复查一遍（零发现可能属实，也可能是漏看）；多文件改动的 diff 只报出 1~2 条通常意味着覆盖不足；plan 中被静态引擎密集标记而你零产出的文件优先复查。
    **absorb 完成后**才进入第 5 步呈现（基于合并后报告）。
 5. **呈现 + 修复选项**：用中文摘要（各严重级数量、最关键的几条），**必须**用 AskUserQuestion 呈现：
+   - **critical 复审（critical > 0 时必做，呈现之前）**：逐条读取问题行及上下文，给出结论——**确认 / 疑似误报 / 需人工判断**——附一句话依据；摘要中按结论标注；"疑似误报"默认不进入修复范围（用户可推翻）。major 及以下不强制复审。
    - 先查看问题详情（用 `codespot show` 按严重级/文件分批呈现，看完回到本选项）
    - （报告含密钥发现时可提示）启用深度密钥检测：`codespot scan --engine trufflehog`——800+ 检测器；默认 `--no-verification` 纯本地检测，不联网验证密钥是否存活
    - 仅修复 🔴 严重（critical）

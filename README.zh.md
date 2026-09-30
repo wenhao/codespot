@@ -116,6 +116,10 @@ git clone https://github.com/wenhao/codespot.git && ln -s "$(pwd)/codespot/skill
 
 升级：`git -C ~/.codespot/src/codespot pull` 后重跑 `setup`；卸载：删除软链与 `~/.codespot/`。
 
+**OSV 在线 / Semgrep 本地规则**：依赖扫描默认**在线**查询 osv.dev（数据最新）；离线库由 `codespot update-db` 下载后，在 `.codespot/config.json` 设 `"osv_offline": true`（或环境变量 `CODESPOT_OSV_OFFLINE=1`）即切离线模式。Semgrep 相反——**规则内置于 skill**（`skill/rules/semgrep`，`setup` 自动下载、`codespot update-rules` 刷新）并默认使用（确定性、快）；规则目录缺失时回退在线 `auto`。
+
+**critical AI 复审**：扫描后若存在 critical 级发现，agent 会在呈现修复选项前逐条复审（确认 / 疑似误报 / 需人工判断）并标注结论。
+
 ## 引擎矩阵
 
 | 类别（配置键） | 引擎 | 运行要求 | 说明 |
@@ -128,10 +132,10 @@ git clone https://github.com/wenhao/codespot.git && ln -s "$(pwd)/codespot/skill
 | `java` | PMD 7.27 | JRE 8+ | 源码级，无需编译 |
 | `java`（深度，可选） | SpotBugs 4.10 + FindSecBugs 1.14 | mvn/gradle + JDK | 项目不可编译时自动跳过 |
 | `sql` | SQLFluff | python3（venv） | 方言自动探测链 |
-| `semantic` | Semgrep CE 1.177（py3.9 回退 1.136） | python3（venv） | Go/C#/Kotlin/Ruby/PHP/Rust/Terraform…；规则运行时从官方 registry 拉取 |
-| `dependencies` | OSV-Scanner 2.6 | —（查询 osv.dev） | 离线库经 `codespot update-db` |
+| `semantic` | Semgrep CE 1.177（py3.9 回退 1.136） | python3（venv） | **默认本地规则**（`setup` 自动克隆到 `~/.codespot/semgrep-rules`，`codespot update-rules` 刷新）；Go/C#/Kotlin/Ruby/PHP/Rust/Terraform… |
+| `dependencies` | OSV-Scanner 2.6 | 默认联网查 osv.dev | 离线：`update-db` + config `osv_offline: true`；扫描 requirements/锁文件/pom/go.mod 的已知 CVE |
 | `secrets_deep`（**opt-in**） | TruffleHog 3.97 | — | `--engine trufflehog`；默认 `--no-verification` |
-| `ai_review`（**默认开启**） | AI agent 本身 | — | 计划 → 分析 → `ai-scan absorb`；`rules.ai_review.disabled` 可关 |
+| `ai_review`（**默认开启**） | AI agent 本身 | — | 计划 → 分析 → `ai-scan absorb`；`rules.ai_review.disabled` 可关；critical 发现默认 AI 复审 |
 
 ### 各语言规则数量与去重
 
@@ -159,6 +163,7 @@ git clone https://github.com/wenhao/codespot.git && ln -s "$(pwd)/codespot/skill
 | `codespot ai-scan absorb` | 校验并合并 agent 写入的 AI 审查结果到最近报告 |
 | `codespot update-db` | 下载/刷新本地 OSV 漏洞库（启用离线依赖扫描） |
 | `codespot report` | 打印最近一次 report.json |
+| `codespot update-rules` | 刷新本地 Semgrep 规则（离线默认） |
 | `codespot selftest` | 夹具驱动的全引擎回归自检 |
 
 ## 配置

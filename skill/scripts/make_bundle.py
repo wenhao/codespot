@@ -236,10 +236,18 @@ def main():
         print("make_bundle: no engines found — run `codespot setup` first", file=sys.stderr)
         return 2
 
-    # 3. wheels / osv db / semgrep rules
+    # 3. wheels / osv db (semgrep rules ship inside skill/rules — ensure present)
+    if not os.path.isdir(os.path.join(SKILL, "rules", "semgrep")):
+        r = subprocess.run(["git", "clone", "--depth", "1", "-q",
+                            "https://github.com/semgrep/semgrep-rules",
+                            os.path.join(SKILL, "rules", "semgrep")],
+                           capture_output=True, text=True, timeout=600)
+        if r.returncode != 0:
+            print("make_bundle: semgrep rules clone failed — bundle will use "
+                  "--config auto fallback", file=sys.stderr)
     wheels_ok = download_wheels(stage)
     osv_n = collect_osv_db(stage)
-    rules_n = collect_semgrep_rules(stage)
+    rules_n = -1
 
     # 4. notices + manifest + installers
     write_notices(stage, engine_dirs)
