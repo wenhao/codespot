@@ -14,6 +14,7 @@ description: Local static code scanning for AI-generated code. Use whenever the 
    <skill目录>/scripts/codespot setup
    ```
    个别引擎安装失败（如无 npm / 无 JRE）不影响其余引擎；对应语言将缺少覆盖，需如实告知用户。
+   **首次 setup 需下载约 500MB 引擎**（并行进行，逐个引擎打印 ✓/✗ 进度）——**建议以后台任务方式执行并轮询输出**，把已完成的引擎同步给用户；在此期间可先回答用户其他问题。全量大仓库的 scan 同理（semgrep 单语言可到数分钟，scan 会逐引擎打印耗时）。
 2. **扫描**（在用户项目根目录）：
    ```bash
    <skill目录>/scripts/codespot scan --scope auto

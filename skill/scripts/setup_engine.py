@@ -81,10 +81,33 @@ def engine_binary(name, version):
     return d if os.path.isdir(os.path.join(d, "node_modules")) else None
 
 
-def _download(url, dest):
+def _download(url, dest, label=""):
     req = urllib.request.Request(url, headers={"User-Agent": "codespot-setup"})
+    total = None
+    got = 0
+    last_tick = 0.0
+    import time
     with urllib.request.urlopen(req, timeout=180) as resp, open(dest, "wb") as f:
-        shutil.copyfileobj(resp, f)
+        total = int(resp.headers.get("Content-Length") or 0)
+        while True:
+            chunk = resp.read(256 * 1024)
+            if not chunk:
+                break
+            f.write(chunk)
+            got += len(chunk)
+            now = time.monotonic()
+            if now - last_tick > 1.0:
+                last_tick = now
+                mb = got / 1e6
+                if total:
+                    sys.stdout.write("\r  %s %.1f/%.1f MB" % (label, mb, total / 1e6))
+                else:
+                    sys.stdout.write("\r  %s %.1f MB" % (label, mb))
+                sys.stdout.flush()
+    if total:
+        sys.stdout.write("\r  %s %.1f/%.1f MB\n" % (label, got / 1e6, total / 1e6))
+    else:
+        sys.stdout.write("\n")
 
 
 def _extract(archive, dest):
@@ -162,7 +185,7 @@ def _setup_binary(spec, dest_dir):
         if spec.get("raw_binary"):
             exe = os.path.join(dest_dir, name + (".exe" if IS_WINDOWS else ""))
             print("setup: downloading %s %s from %s" % (name, version, url))
-            _download(url, exe)
+            _download(url, exe, label="download %s" % name)
             if not IS_WINDOWS:
                 os.chmod(exe, os.stat(exe).st_mode | stat.S_IEXEC)
             ok = _verify(exe, name, spec.get("version_flag", "--version"))
@@ -172,7 +195,7 @@ def _setup_binary(spec, dest_dir):
             return exe
         archive = os.path.join(tmpd, "engine." + ext)
         print("setup: downloading %s %s from %s" % (name, version, url))
-        _download(url, archive)
+        _download(url, archive, label="download %s" % name)
         _extract(archive, tmpd)
         layout = spec.get("layout", {})
         archive_dir = layout.get("archive_dir", "").replace("{version}", version)
@@ -221,7 +244,7 @@ def _setup_binary(spec, dest_dir):
         for extra in spec.get("extra_downloads", []):
             target = os.path.join(tree if layout.get("wrapper") else dest_dir, extra["name"])
             print("setup: downloading %s" % extra["name"])
-            _download(extra["url"], target)
+            _download(extra["url"], target, label="download %s" % extra["name"])
         with open(os.path.join(dest_dir, ".ok"), "w") as f:
             f.write(ok or "ok")
         print("setup: %s %s installed (%s)" % (name, version, exe))
@@ -287,10 +310,11 @@ def _setup_venv(spec, dest_dir):
 
 
 def setup_all(only=None):
-    """Per-engine isolation: collect failures, install the rest, report at the end.
-    Engines unsupported on this platform are skipped with a notice (not a failure)."""
+    """Install engines in parallel; per-engine failure isolation; skips
+    agent-driven engines and platforms not in the registry whitelist."""
+    from concurrent.futures import ThreadPoolExecutor, as_completed
     specs = load_registry()
-    results, failures = {}, []
+    targets = {}
     for key, spec in specs.items():
         if only and key not in only:
             continue
@@ -300,11 +324,24 @@ def setup_all(only=None):
         if not platform_supported(spec):
             print("setup: SKIP %s (not supported on %s)" % (key, platform.system()))
             continue
-        try:
-            results[key] = setup_engine(spec)
-        except RuntimeError as e:
-            failures.append((key, str(e)))
-            print("setup: %s" % e, file=sys.stderr)
+        targets[key] = spec
+    if not targets:
+        return {}
+    total = len(targets)
+    results, failures = {}, []
+    done = 0
+    with ThreadPoolExecutor(max_workers=min(4, total)) as pool:
+        futs = {pool.submit(setup_engine, spec): key for key, spec in targets.items()}
+        for fut in as_completed(futs):
+            key = futs[fut]
+            done += 1
+            try:
+                results[key] = fut.result()
+                print("setup: [%d/%d] %s ✓" % (done, total, key))
+            except RuntimeError as e:
+                failures.append((key, str(e)))
+                print("setup: [%d/%d] %s ✗ %s" % (done, total, key, str(e)[:120]),
+                      file=sys.stderr)
     if failures:
         raise RuntimeError("setup finished with %d failure(s): %s"
                            % (len(failures), ", ".join(k for k, _ in failures)))

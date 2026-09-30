@@ -7,6 +7,8 @@ Subcommands: setup | scope | scan | report | selftest
 import argparse
 import concurrent.futures
 import datetime
+import time as _time
+import time
 import json
 import os
 import shutil
@@ -211,11 +213,22 @@ def do_scan(args):
             except RuntimeError as e:
                 print("scan: setup failed for %s: %s" % (key, e))
 
+    print("scan: running %d engine(s): %s" % (len(chosen), ", ".join(k for k, _ in chosen)))
+    t0 = _time.monotonic()
     with concurrent.futures.ThreadPoolExecutor(max_workers=min(4, len(chosen))) as pool:
-        futures = [pool.submit(run_adapter, key, spec, root, list_path,
-                               os.path.join(dot, "result-%s.json" % key))
-                   for key, spec in chosen]
-        results = [f.result() for f in futures]
+        futures = {pool.submit(run_adapter, key, spec, root, list_path,
+                               os.path.join(dot, "result-%s.json" % key)): key
+                   for key, spec in chosen}
+        results, done_n = [], 0
+        for fut in concurrent.futures.as_completed(futures):
+            key = futures[fut]
+            done_n += 1
+            res = fut.result()
+            results.append(res)
+            took = _time.monotonic() - t0
+            _, issues_n, err = res
+            status = ("failed: %s" % err[:80]) if err else ("%d issue(s)" % len(issues_n or []))
+            print("scan: [%d/%d] %s — %s (%.1fs)" % (done_n, len(chosen), key, status, took))
 
     per_engine, engine_errors = [], []
     for key, issues, err in results:
@@ -234,8 +247,8 @@ def do_scan(args):
                "issues": issues, "engine_errors": engine_errors, "summary": summary}
     _write_reports(root, payload)
     ok_engines = [k for k, _, e in results if not e]
-    print("scan: done — %d issue(s) from %d engine(s)%s"
-          % (len(issues), len(ok_engines),
+    print("scan: done — %d issue(s) from %d engine(s) in %.1fs%s"
+          % (len(issues), len(ok_engines), _time.monotonic() - t0,
              ", %d engine error(s)" % len(engine_errors) if engine_errors else ""))
     return 0
 
