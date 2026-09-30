@@ -453,6 +453,29 @@ def do_update_rules(args):
     return 0
 
 
+def do_update_rules(args):
+    """Refresh <skill>/rules/semgrep (git pull, fallback re-clone)."""
+    rules = semgrep_rules_dir()
+    git = shutil.which("git")
+    if not git:
+        sys.stderr.write("codespot update-rules: git not found\n")
+        return 2
+    if os.path.isdir(os.path.join(rules, ".git")):
+        r = subprocess.run([git, "-C", rules, "pull", "--ff-only"],
+                           capture_output=True, text=True, timeout=600)
+    else:
+        shutil.rmtree(rules, ignore_errors=True)
+        r = subprocess.run([git, "clone", "--depth", "1", "-q",
+                            "https://github.com/semgrep/semgrep-rules", rules],
+                           capture_output=True, text=True, timeout=600)
+    if r.returncode != 0:
+        sys.stderr.write("codespot update-rules failed: %s\n" % (r.stderr or r.stdout).strip()[:300])
+        return 2
+    prune_semgrep_rules(rules)
+    print("update-rules: semgrep rules refreshed (%s)" % rules)
+    return 0
+
+
 def do_update_db(args):
     """Download/refresh the local OSV vulnerability DB for offline dependency scans."""
     spec = setup_engine.load_registry().get("osv-scanner")
@@ -464,11 +487,9 @@ def do_update_db(args):
         sys.stderr.write("codespot update-db: osv-scanner not installed (run codespot setup)\n")
         return 2
     import tempfile
-    # one seed lockfile per ecosystem — the offline DB is downloaded per-ecosystem
-    # ecosystems with a working seed format (osv-scanner 2.6: maven/packagist
-    # seeds are rejected without real project structure — skipped here)
-    # seeds must contain a real package entry — empty shells are rejected by
-    # osv-scanner 2.6 ("No package sources found" / exit 127)
+    # one seed lockfile per ecosystem — the offline DB is downloaded per-ecosystem.
+    # NOTE: every seed MUST contain at least one real package entry — empty or
+    # comment-only shells yield "No package sources found" and nothing downloads.
     seeds = {
         "PyPI": ("requirements.txt", "text"),
         "npm": ("package-lock.json", "npm"),
@@ -504,7 +525,11 @@ def do_update_db(args):
                     f.write('{"packages":[{"name":"psr/log","version":"3.0.0"}],"packages-dev":[]}\n')
             elif kind == "gomod":
                 with open(seed, "w") as f:
-                    f.write('module example.com/seed\n\ngo 1.21\n')
+                    f.write('module example.com/seed\n\ngo 1.21\n\nrequire github.com/pkg/errors v0.9.1\n')
+            if kind == "text":
+                # PyPI: a real pinned requirement — comment-only shells don't download
+                with open(seed, "w") as f:
+                    f.write("requests==2.19.0\n")
             if kind == "npm":
                 # needs >=1 real package entry, else "No package sources found"
                 with open(seed, "w") as f:
@@ -760,9 +785,6 @@ def main():
     sp.add_argument("--limit", type=int, default=50)
     sp.add_argument("--all", action="store_true", help="show all matches")
     sp.set_defaults(fn=do_show)
-
-    sp = sub.add_parser("update-db", help="download/refresh the local OSV vulnerability DB (enables offline dependency scans)")
-    sp.set_defaults(fn=do_update_db)
 
     sp = sub.add_parser("update-rules", help="refresh local semgrep rules (offline defaults)")
     sp.set_defaults(fn=do_update_rules)

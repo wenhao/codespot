@@ -32,7 +32,7 @@ English | [中文](README.zh.md)
 - **AI semantic review (on by default)** — every scan writes a review plan; the agent itself reviews what static rules can't catch (logic, concurrency, error-handling gaps, cross-file inconsistencies) and merges validated findings with `codespot ai-scan absorb`.
 - **AI fix loop** — severity-filtered fix options, agent edits code, rescans to verify (≤3 rounds), summarizes fixed / skipped / remaining; false positives go to ignore lists.
 - **Secrets detection** — 222-rule always-on layer with redacted reporting and a rotate-first workflow; optional TruffleHog deep layer (800+ detectors, liveness verification available but off by default).
-- **Dependency vulnerabilities (SCA)** — OSV-Scanner against requirements/lockfiles/pom/go.mod, with an offline vulnerability DB (`codespot update-db`) and an upgrade target on every finding.
+- **Dependency vulnerabilities (SCA)** — OSV-Scanner against requirements/lockfiles/pom/go.mod (live osv.dev queries; network required), with an upgrade target on every finding.
 - **Rule governance** — three config layers (native tool configs > `.codespot/config.json` categories > built-in defaults), severity overrides, per-finding ignore lists.
 - **Regression built in** — `codespot selftest` runs every engine against fixtures; `codespot show` browses findings by severity / file / CS id.
 
@@ -46,7 +46,7 @@ License hygiene was a design constraint from day one. SonarSource analyzers move
 
 ## OSV online / Semgrep local rules
 
-Dependency scans query osv.dev **online** by default (freshest data). An offline vulnerability DB can be downloaded with `codespot update-db` and enabled via `"osv_offline": true` in `.codespot/config.json` (or env `CODESPOT_OSV_OFFLINE=1`).
+Dependency scans always query the live [osv.dev](https://osv.dev) database (network required).
 
 Semgrep is the opposite: its **rules ship inside the skill** (`skill/rules/semgrep`, downloaded by `setup`, refreshed by `codespot update-rules`) and are used by default — deterministic and fast (no online rule-pack fetches, no 300s timeouts). If the rules dir is missing, semgrep falls back to online `auto`.
 
@@ -137,7 +137,7 @@ Update with `git -C ~/.codespot/src/codespot pull` + re-run `setup`; uninstall b
 | `java` (deep, optional) | SpotBugs 4.10 + FindSecBugs 1.14 | mvn/gradle + JDK | skipped when project isn't buildable |
 | `sql` | SQLFluff | python3 (venv) | dialect auto-detection chain |
 | `semantic` | Semgrep CE 1.177 (1.136 on py3.9) | python3 (venv) | Go/C#/Kotlin/Ruby/PHP/Rust/Terraform…; rules fetched from the official registry |
-| `dependencies` | OSV-Scanner 2.6 | — (queries osv.dev) | offline DB via `codespot update-db` |
+| `dependencies` | OSV-Scanner 2.6 | network (live osv.dev queries) | scans requirements/lockfiles/pom/go.mod for known CVEs |
 | `secrets_deep` (**opt-in**) | TruffleHog 3.97 | — | `--engine trufflehog`; `--no-verification` by default |
 | `ai_review` (**on by default**) | the AI agent itself | — | plan → analyze → `ai-scan absorb`; disable via `rules.ai_review.disabled` |
 
@@ -165,7 +165,6 @@ De-duplication is by design: `eslint-plugin-oxlint` disables every ESLint rule t
 | `codespot scan --scope <tier> [--engine name…]` | Run matching engines + any requested opt-in engines; writes both reports and the AI review plan |
 | `codespot show [--severity s1,s2] [--file prefix] [--rule CS-xxxxx] [--limit N] [--all]` | Browse issue details from the last report |
 | `codespot ai-scan absorb` | Validate & merge agent-written AI review results into the last report |
-| `codespot update-db` | Download/refresh the local OSV vulnerability DB (enables offline dependency scans) |
 | `codespot report` | Print the last report.json |
 | `codespot update-rules` | Refresh local Semgrep rules (offline defaults) |
 | `codespot selftest` | Fixture-based regression across all engines |
@@ -198,7 +197,7 @@ Severity tuning: `.codespot/severity-overrides.json` (`{"ruff": {"rules": {"RUF1
 
 ## Vulnerability DB & engine updates
 
-- **OSV-Scanner is offline-first**: with a local DB (run `codespot update-db` once, cached under `~/Library/Caches/osv-scalibr/` or `~/.cache/osv-scalibr/`) dependency scans run fully offline; without one they query osv.dev live. Re-run `update-db` to refresh.
+- **OSV-Scanner is online-only**: dependency scans query the live osv.dev database (network required). Offline vulnerability DBs are not used (dropped 2026-09-30).
 - **Semgrep rules** cache under `~/.semgrep/`; delete the cache to force a refresh, or point `semgrep_config` at a local rules dir for strict-offline setups.
 - **Engine upgrades**: bump the `version` field in `skill/scripts/engines/registry.json` and re-run `setup`; reset an engine with `rm -rf ~/.codespot/engines/<name>-<version>`.
 
@@ -236,7 +235,7 @@ codespot/
 
 ## Offline & platform notes
 
-- After `setup` + `update-db` (once, online), everything except Semgrep works fully offline; Semgrep needs its rule cache or a local rules dir.
+- After `setup`, `update-rules` and one warm-up scan (once, online), everything except dependency scanning works offline; dependency scans need osv.dev.
 - **Windows: supported** and continuously validated by the GitHub Actions matrix on `ubuntu` / `macos` / `windows` (setup ×2, selftest, smoke scan) — see the CI badge above. Every engine works natively except Semgrep, which has no Windows build: codespot skips it with a console notice, so the `semantic` category needs WSL2.
 - **Windows install**: symlinks need developer mode/admin, so a plain copy works too — `robocopy skill "%USERPROFILE%\.agents\skills\codespot" /E` (or into `.claude\skills/`, `.codex\skills/`), then run the CLI as `python ...\scripts\codespot setup`.
 

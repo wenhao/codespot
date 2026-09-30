@@ -43,13 +43,6 @@ def find_binary():
     return _se.resolve_engine_cmd("osv-scanner") or shutil.which("osv-scanner")
 
 
-def offline_db_available():
-    """True when a previously downloaded OSV local DB exists (osv-scalibr cache)."""
-    bases = (os.path.expanduser("~/Library/Caches/osv-scalibr"),
-             os.path.expanduser(os.path.join(os.environ.get("XDG_CACHE_HOME", "~/.cache"), "osv-scalibr")))
-    return any(glob.glob(os.path.join(b, "*", "*.zip")) for b in bases)
-
-
 def is_manifest(path):
     name = os.path.basename(path)
     if MANIFEST_RE.match(name):
@@ -79,16 +72,6 @@ def main():
         return
 
     cmd = [binary, "scan", "source", "--allow-no-lockfiles", "-f", "json"]
-    # online by default (freshest data); offline is an explicit opt-in
-    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-    from common import load_project_config
-    if (load_project_config().get("osv_offline") is True
-            or os.environ.get("CODESPOT_OSV_OFFLINE") == "1"):
-        if offline_db_available():
-            cmd += ["--offline-vulnerabilities"]
-        else:
-            sys.stderr.write("codespot-deps: osv_offline requested but no local DB "
-                             "(run codespot update-db) — falling back to online\n")
     for m in manifests:
         cmd += ["-L", m]
     try:

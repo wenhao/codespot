@@ -56,12 +56,6 @@ WHEEL_ENGINES = {  # registry key -> pip distribution name
 }
 PY_VERSIONS = ("3.10", "3.11")
 
-OSV_CACHE_BASES = (
-    os.path.expanduser("~/Library/Caches/osv-scalibr"),
-    os.path.expanduser(os.path.join(os.environ.get("XDG_CACHE_HOME", "~/.cache"), "osv-scalibr")),
-)
-
-
 def sysinfo():
     sysname = platform.system().lower()          # darwin/linux/windows
     machine = {"x86_64": "x64", "AMD64": "x64", "arm64": "arm64"}.get(
@@ -108,23 +102,6 @@ def download_wheels(stage):
                           % (pkg, pyv, r.stderr.strip()[:200]), file=sys.stderr)
                     ok = False
     return ok
-
-
-def collect_osv_db(stage):
-    off = os.path.join(stage, "offline", "osv-db")
-    os.makedirs(off, exist_ok=True)
-    found = 0
-    for base in OSV_CACHE_BASES:
-        if os.path.isdir(base):
-            for root, _dirs, files in os.walk(base):
-                for f in files:
-                    if f.endswith((".zip", ".json")):
-                        rel = os.path.relpath(os.path.join(root, f), base)
-                        tgt = os.path.join(off, rel)
-                        os.makedirs(os.path.dirname(tgt), exist_ok=True)
-                        shutil.copy2(os.path.join(root, f), tgt)
-                        found += 1
-    return found
 
 
 def collect_semgrep_rules(stage):
@@ -246,8 +223,6 @@ def main():
             print("make_bundle: semgrep rules clone failed — bundle will use "
                   "--config auto fallback", file=sys.stderr)
     wheels_ok = download_wheels(stage)
-    osv_n = collect_osv_db(stage)
-    rules_n = -1
 
     # 4. notices + manifest + installers
     write_notices(stage, engine_dirs)
@@ -256,7 +231,6 @@ def main():
         "platform": "%s-%s" % (sysname, machine),
         "engines": engine_dirs,
         "wheelsComplete": wheels_ok,
-        "osvDbFiles": osv_n,
         "semgrepRuleFiles": rules_n,
         "builtAt": subprocess.run(["date", "-u", "+%Y-%m-%dT%H:%M:%SZ"],
                                   capture_output=True, text=True).stdout.strip(),

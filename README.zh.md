@@ -32,7 +32,7 @@
 - **AI 语义审查（默认开启）** —— 每次扫描生成审查计划；agent 审查静态规则抓不到的问题（逻辑、并发、错误处理缺口、跨文件不一致），经 `codespot ai-scan absorb` 校验合并。
 - **AI 修复闭环** —— 按严重级选择修复范围，agent 改码、重扫验证（≤3 轮）、汇总已修复/跳过/剩余；误报进白名单。
 - **密钥检测** —— 常开层 222 条规则 + 报告脱敏 + "先轮换后清理"工作流；可选 TruffleHog 深度层（800+ 检测器，活体验证默认关闭）。
-- **依赖漏洞（SCA）** —— OSV-Scanner 扫 requirements/锁文件/pom/go.mod，支持离线漏洞库（`codespot update-db`），每条发现附升级目标版本。
+- **依赖漏洞（SCA）** —— OSV-Scanner 在线查询 osv.dev 扫 requirements/锁文件/pom/go.mod（需联网），每条发现附升级目标版本。
 - **规则治理** —— 三层配置（原生工具配置 > `.codespot/config.json` 类别开关 > 内置默认）、severity 覆盖、单条误报白名单。
 - **内建回归** —— `codespot selftest` 全引擎夹具自检；`codespot show` 按严重级/文件/CS 编号浏览发现。
 
@@ -116,7 +116,7 @@ git clone https://github.com/wenhao/codespot.git && ln -s "$(pwd)/codespot/skill
 
 升级：`git -C ~/.codespot/src/codespot pull` 后重跑 `setup`；卸载：删除软链与 `~/.codespot/`。
 
-**OSV 在线 / Semgrep 本地规则**：依赖扫描默认**在线**查询 osv.dev（数据最新）；离线库由 `codespot update-db` 下载后，在 `.codespot/config.json` 设 `"osv_offline": true`（或环境变量 `CODESPOT_OSV_OFFLINE=1`）即切离线模式。Semgrep 相反——**规则内置于 skill**（`skill/rules/semgrep`，`setup` 自动下载、`codespot update-rules` 刷新）并默认使用（确定性、快）；规则目录缺失时回退在线 `auto`。
+**OSV 在线 / Semgrep 本地规则**：依赖扫描始终**在线**查询 osv.dev（数据最新，需联网）。Semgrep 相反——**规则内置于 skill**（`skill/rules/semgrep`，`setup` 自动下载、`codespot update-rules` 刷新）并默认使用（确定性、快）；规则目录缺失时回退在线 `auto`。
 
 **critical AI 复审**：扫描后若存在 critical 级发现，agent 会在呈现修复选项前逐条复审（确认 / 疑似误报 / 需人工判断）并标注结论。
 
@@ -132,8 +132,8 @@ git clone https://github.com/wenhao/codespot.git && ln -s "$(pwd)/codespot/skill
 | `java` | PMD 7.27 | JRE 8+ | 源码级，无需编译 |
 | `java`（深度，可选） | SpotBugs 4.10 + FindSecBugs 1.14 | mvn/gradle + JDK | 项目不可编译时自动跳过 |
 | `sql` | SQLFluff | python3（venv） | 方言自动探测链 |
-| `semantic` | Semgrep CE 1.177（py3.9 回退 1.136） | python3（venv） | **默认本地规则**（`setup` 自动克隆到 `~/.codespot/semgrep-rules`，`codespot update-rules` 刷新）；Go/C#/Kotlin/Ruby/PHP/Rust/Terraform… |
-| `dependencies` | OSV-Scanner 2.6 | 默认联网查 osv.dev | 离线：`update-db` + config `osv_offline: true`；扫描 requirements/锁文件/pom/go.mod 的已知 CVE |
+| `semantic` | Semgrep CE 1.177（py3.9 回退 1.136） | python3（venv） | **默认本地规则**（`setup` 自动克隆到 `skill/rules/semgrep`，`codespot update-rules` 刷新）；Go/C#/Kotlin/Ruby/PHP/Rust/Terraform… |
+| `dependencies` | OSV-Scanner 2.6 | 需联网（在线查 osv.dev） | 扫描 requirements/锁文件/pom/go.mod 的已知 CVE |
 | `secrets_deep`（**opt-in**） | TruffleHog 3.97 | — | `--engine trufflehog`；默认 `--no-verification` |
 | `ai_review`（**默认开启**） | AI agent 本身 | — | 计划 → 分析 → `ai-scan absorb`；`rules.ai_review.disabled` 可关；critical 发现默认 AI 复审 |
 
@@ -161,7 +161,6 @@ git clone https://github.com/wenhao/codespot.git && ln -s "$(pwd)/codespot/skill
 | `codespot scan --scope <档位> [--engine 名称…]` | 运行匹配引擎 + 显式点名的 opt-in 引擎；写出双报告与 AI 审查计划 |
 | `codespot show [--severity 级别] [--file 前缀] [--rule CS-编号] [--limit N] [--all]` | 浏览最近一次报告的问题详情 |
 | `codespot ai-scan absorb` | 校验并合并 agent 写入的 AI 审查结果到最近报告 |
-| `codespot update-db` | 下载/刷新本地 OSV 漏洞库（启用离线依赖扫描） |
 | `codespot report` | 打印最近一次 report.json |
 | `codespot update-rules` | 刷新本地 Semgrep 规则（离线默认） |
 | `codespot selftest` | 夹具驱动的全引擎回归自检 |
@@ -194,7 +193,7 @@ docs/generated/**
 
 ## 漏洞库与引擎更新
 
-- **OSV-Scanner 离线优先**：有本地库（跑一次 `codespot update-db`，缓存于 `~/Library/Caches/osv-scalibr/` 或 `~/.cache/osv-scalibr/`）时依赖扫描完全离线；无库时实时查询 osv.dev。重跑 `update-db` 即刷新。
+- **OSV-Scanner 在线查询**：依赖扫描始终实时查询 osv.dev（需联网；离线漏洞库已于 2026-09-30 移除）。
 - **Semgrep 规则** 缓存于 `~/.semgrep/`；删缓存强制刷新，严格离线可把 `semgrep_config` 指向本地规则目录。
 - **引擎升级**：改 `skill/scripts/engines/registry.json` 的 `version` 后重跑 `setup`；重置：`rm -rf ~/.codespot/engines/<name>-<version>`。
 
@@ -232,7 +231,7 @@ codespot/
 
 ## 离线与平台说明
 
-- 联网做一次 `setup` + `update-db` 后，除 Semgrep 外全部能力离线可用；Semgrep 需规则缓存或本地规则目录。
+- 联网做一次 `setup` + `update-rules` + 一次预热扫描后，除依赖扫描（需查 osv.dev）外全部能力离线可用。
 - Windows：除 Semgrep（需 WSL2/Docker）外可用，另需少量 registry/wrapper 适配；当前在 macOS/Linux 充分验证。
 
 ### 平台兼容性（Windows 已支持）
@@ -251,7 +250,7 @@ codespot/
 
 ### 离线使用指南
 
-**提前准备（联网做一次）**：① `codespot setup`（引擎本地化）；② `codespot update-db`（OSV 离线库）；③ 跑一次在线扫描预热 Semgrep 规则缓存。
+**提前准备（联网做一次）**：① `codespot setup`（引擎本地化）；② 跑一次在线扫描（预热 Semgrep 规则缓存）；③ 跑一次在线扫描预热 Semgrep 规则缓存。
 
 | 引擎 | 离线状态 |
 |---|---|
