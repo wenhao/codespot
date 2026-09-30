@@ -469,9 +469,16 @@ def do_ai_scan(args):
 
 
 def do_selftest(args):
-    fixtures = os.path.join(os.path.dirname(HERE), "tests", "fixtures")
-    if not os.path.isdir(fixtures):
-        sys.stderr.write("codespot selftest: fixtures not found at %s\n" % fixtures)
+    # fixtures live at repo level (dev asset, not part of the installed skill):
+    # <repo>/tests/fixtures next to skill/, or skill/tests/fixtures as fallback
+    candidates = [
+        os.path.join(os.path.dirname(HERE), "tests", "fixtures"),  # repo layout
+        os.path.join(HERE, "tests", "fixtures"),                   # legacy skill layout
+        os.path.join(os.path.dirname(os.path.dirname(HERE)), "tests", "fixtures"),
+    ]
+    fixtures = next((c for c in candidates if os.path.isdir(c)), None)
+    if not fixtures:
+        sys.stderr.write("codespot selftest: fixtures not found (repo tests/ or skill/tests/)\n")
         return 2
     expected_path = os.path.join(fixtures, "expected.json")
     with open(expected_path, "r", encoding="utf-8") as f:

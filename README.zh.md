@@ -197,7 +197,7 @@ docs/generated/**
 
 1. 编写 `skill/scripts/engines/engine_<name>.py`，实现适配器契约：`--workdir <根> --files <清单.json> --out <结果.json>`；成功退出 `0`（issue JSON 数组），失败退出 `2`（原因写 stderr）。
 2. 输出统一 issue schema（`common.make_issue`）；severity 经 `rules-severity.json` 归一。
-3. 在 `registry.json` 注册（安装形态、版本、语言、类别），并在 `skill/tests/fixtures/` + `expected.json` 添加夹具。
+3. 在 `registry.json` 注册（安装形态、版本、语言、类别），并在 `tests/fixtures/` + `expected.json` 添加夹具。
 
 ## 项目结构
 
@@ -212,7 +212,8 @@ codespot/
 │   │   ├── rules-severity.json   # severity 映射
 │   │   └── engines/              # common.py + engine_*.py 适配器 + registry.json
 │   ├── assets/                   # 引擎默认配置（ruff / oxlint / eslint / pmd）
-│   └── tests/fixtures/           # selftest 夹具与 expected.json
+│   └── assets/                   # 引擎默认配置
+├── tests/fixtures/               # selftest 夹具（开发资产，不随 skill 安装）
 ├── docs/                         # 调研、报告与品牌资产（不属于 skill）
 │   ├── feasibility-research.md   # 可行性调研
 │   ├── project-report.md / .html # 项目汇报

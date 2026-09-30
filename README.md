@@ -197,7 +197,7 @@ Severity tuning: `.codespot/severity-overrides.json` (`{"ruff": {"rules": {"RUF1
 
 1. Write `skill/scripts/engines/engine_<name>.py` implementing the adapter contract: `--workdir <root> --files <list.json> --out <result.json>`; exit `0` with a JSON array of issues, `2` with the failure reason on stderr.
 2. Emit the unified issue schema (`common.make_issue`); severity normalizes via `rules-severity.json`.
-3. Register it in `registry.json` (install form, version, languages, category) and add fixtures to `skill/tests/fixtures/` + `expected.json`.
+3. Register it in `registry.json` (install form, version, languages, category) and add fixtures to `tests/fixtures/` + `expected.json`.
 
 ## Project Structure
 
@@ -212,7 +212,8 @@ codespot/
 │   │   ├── rules-severity.json   # severity mapping
 │   │   └── engines/              # common.py + engine_*.py adapters + registry.json
 │   ├── assets/                   # default engine configs (ruff / oxlint / eslint / pmd)
-│   └── tests/fixtures/           # selftest fixtures + expected.json
+│   └── assets/                   # default engine configs (ruff / oxlint / eslint / pmd)
+├── tests/fixtures/               # selftest fixtures (dev asset, not installed)
 ├── docs/                         # research, reports & branding (not part of the skill)
 │   ├── feasibility-research.md   # feasibility study
 │   ├── project-report.md / .html # project report
