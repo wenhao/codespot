@@ -22,6 +22,14 @@ sys.path.insert(0, os.path.join(HERE, "engines"))
 
 import setup_engine  # noqa: E402
 
+# Windows consoles default to cp1252 and choke on ✓/emoji in progress output
+for _stream in (sys.stdout, sys.stderr):
+    if hasattr(_stream, "reconfigure"):
+        try:
+            _stream.reconfigure(encoding="utf-8", errors="replace")
+        except (ValueError, OSError):
+            pass
+
 CODESPOT_DIR = ".codespot"
 REPORT_JSON = "report.json"
 REPORT_MD = "report.md"
