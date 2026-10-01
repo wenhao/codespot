@@ -485,17 +485,28 @@ def prune_semgrep_rules(rules):
     that trip GitHub secret-scanning push protection."""
     n = 0
     for root, dirs, files in os.walk(rules):
+        # never touch .git (update-rules needs it for future pulls)
+        dirs[:] = [d for d in dirs if d != ".git"]
         rel = os.path.relpath(root, rules).replace(os.sep, "/")
         if rel == "generic/secrets":
             shutil.rmtree(root, ignore_errors=True)
             continue
         for f in files:
-            if not f.endswith((".yaml", ".yml")):
+            if f.endswith((".yaml", ".yml")):
+                continue
+            try:
                 os.remove(os.path.join(root, f))
                 n += 1
+            except OSError:
+                pass
     for root, dirs, files in os.walk(rules, topdown=False):
+        if ".git" in dirs:
+            dirs.remove(".git")
         if root != rules and not os.listdir(root):
-            os.rmdir(root)
+            try:
+                os.rmdir(root)
+            except OSError:
+                pass
     return n
 
 

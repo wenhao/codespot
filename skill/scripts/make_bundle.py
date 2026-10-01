@@ -231,7 +231,6 @@ def main():
         "platform": "%s-%s" % (sysname, machine),
         "engines": engine_dirs,
         "wheelsComplete": wheels_ok,
-        "semgrepRuleFiles": rules_n,
         "builtAt": subprocess.run(["date", "-u", "+%Y-%m-%dT%H:%M:%SZ"],
                                   capture_output=True, text=True).stdout.strip(),
     }
