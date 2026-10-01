@@ -64,6 +64,18 @@ jobs:
           python ~/.agents/skills/codespot/scripts/codespot setup --offline-dir "$DIR/offline"
           python ~/.agents/skills/codespot/scripts/codespot scan --scope uncommitted
           test -f .codespot/report.json
+      - name: Publish failure logs
+        if: failure()
+        shell: bash
+        run: |
+          git config user.name ci-bot && git config user.email ci@local
+          mkdir -p ci-logs
+          cp -r "$HOME/.codespot/engines" ci-logs/engines-state 2>/dev/null || true
+          ls -la "$HOME/.codespot/engines" > ci-logs/engines-list.txt 2>&1 || true
+          git checkout -b "ci-logs-$RUNNER_OS-$GITHUB_RUN_ID"
+          git add ci-logs
+          git commit -m "release failure logs run $GITHUB_RUN_ID"
+          git push "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/wenhao/codespot" "ci-logs-$RUNNER_OS-$GITHUB_RUN_ID"
       - uses: actions/upload-artifact@v4
         with:
           name: bundle-${{ matrix.target }}
